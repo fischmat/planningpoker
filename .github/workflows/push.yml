@@ -24,6 +24,7 @@ jobs:
       - run: ./gradlew test
       - name: Archive test results
         uses: actions/upload-artifact@v3
+        if: always()
         with:
           name: test-report
           path: build/reports/tests
