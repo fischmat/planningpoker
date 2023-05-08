@@ -19,9 +19,21 @@ data class Game(
     @JsonMasked val password: String?,
     val playableCards: List<Card>,
 
-    val rounds: MutableList<Round>,
-    val players: MutableList<Player>
-)
+    val rounds: MutableList<Round> = mutableListOf(),
+    val players: MutableList<Player> = mutableListOf()
+) {
+    init {
+        require(name.isNotEmpty()) { "Name of game must not be blank." }
+        require(password == null || password.isNotEmpty()) { "Password must be not blank if specified." }
+        require(playableCards.isNotEmpty()) { "No playable cards are set for the game." }
+        val duplicateCards = playableCards.filter { c ->
+            playableCards.count { it.value == c.value } > 1
+        }.distinct().sortedBy { it.value }
+        require(duplicateCards.isEmpty()) {
+            "Playable cards are duplicated: ${duplicateCards.map { it.value }.joinToString(", ")}"
+        }
+    }
+}
 
 data class Card(
     val value: Int
@@ -53,8 +65,6 @@ data class Vote(
 
 // Repositories
 
-interface GameRepository: MongoRepository<Game, String> {
-    fun findByName(name: String): Game?
-}
+interface GameRepository: MongoRepository<Game, String>
 
 interface PlayerRepository: MongoRepository<Player, String>
