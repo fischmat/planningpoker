@@ -14,8 +14,8 @@ jobs:
           mongodb-username: root
           mongodb-password: test
           mongodb-db: poker
-      - run: sleep 10
-      - run: "docker exec mongodb mongosh -u root -p test --eval 'db.createUser({user: \"test1\", pwd: \"test\", roles: [{role: \"readWrite\", db: \"poker\"}]})'"
+      - name: Create MongoDB user
+        run: "sleep 10 && docker exec mongodb mongosh -u root -p test --eval 'db.createUser({user: \"poker\", pwd: \"test\", roles: [{role: \"readWrite\", db: \"poker\"}]})'"
       - name: Set up JDK 17
         uses: actions/setup-java@v3
         with:
