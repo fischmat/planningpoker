@@ -11,9 +11,6 @@ jobs:
         uses: supercharge/mongodb-github-action@1.8.0
         with:
           mongodb-version: 6.0
-          mongodb-username: poker
-          mongodb-password: test
-          mongodb-db: poker
       - name: Set up JDK 17
         uses: actions/setup-java@v3
         with:
