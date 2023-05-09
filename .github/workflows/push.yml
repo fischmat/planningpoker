@@ -1,4 +1,4 @@
-name: Test changes
+name: Test ${{ github.ref_name }}
 run-name: Running for commit ${{ github.sha }} on ${{ github.ref_name }}
 on: [push]
 jobs:
