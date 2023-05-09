@@ -9,7 +9,8 @@ import java.time.Instant
 @Document("players")
 data class Player (
     @Id val id: String? = null,
-    val name: String
+    val name: String,
+    val avatar: AvatarProps?
 )
 
 @Document("games")

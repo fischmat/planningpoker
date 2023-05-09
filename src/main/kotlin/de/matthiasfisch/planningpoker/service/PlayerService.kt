@@ -2,6 +2,7 @@ package de.matthiasfisch.planningpoker.service
 
 import de.matthiasfisch.planningpoker.model.Player
 import de.matthiasfisch.planningpoker.model.PlayerRepository
+import de.matthiasfisch.planningpoker.model.PlayerStub
 import de.matthiasfisch.planningpoker.util.notFoundError
 import de.matthiasfisch.planningpoker.util.unauthorized
 import jakarta.servlet.http.HttpSession
@@ -22,7 +23,7 @@ class PlayerService(
         playerRepo.findById(id)
             .orElseThrow { notFoundError("Player with ID $id does not exist") }
 
-    fun getOrCreatePlayer(name: String): Player {
+    fun getOrCreatePlayer(stub: PlayerStub): Player {
         val playerId = currentPlayerId()
 
         return if (playerId != null) {
@@ -31,7 +32,8 @@ class PlayerService(
         } else {
             playerRepo.save(
                 Player(
-                    name = name
+                    name = stub.name,
+                    avatar = stub.avatar
                 )
             ).also {
                 session.setAttribute(SESSION_PLAYER_ID_ATTR, it.id)

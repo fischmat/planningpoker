@@ -25,5 +25,10 @@ services:
     entrypoint: [ "/initialize-mongo.sh" ]
     networks:
       - it-net
+
+  dicebear:
+    image: ghcr.io/dicebear/api:latest
+    ports:
+      - 3000:3000
 networks:
   it-net:
