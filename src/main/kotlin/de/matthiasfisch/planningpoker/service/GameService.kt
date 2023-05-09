@@ -2,6 +2,7 @@ package de.matthiasfisch.planningpoker.service
 
 import de.matthiasfisch.planningpoker.model.*
 import de.matthiasfisch.planningpoker.util.conflict
+import de.matthiasfisch.planningpoker.util.forbidden
 import de.matthiasfisch.planningpoker.util.notFoundError
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
@@ -45,6 +46,7 @@ class GameService(
         getOngoingRound(game)?.run {
             throw conflict("Round with ID $id is still ongoing.")
         }
+        checkPlayerIsInGame(game)
 
         // Add new round
         game.rounds += Round(
@@ -57,6 +59,7 @@ class GameService(
         val game = getGame(gameId)
         val ongoingRound = getOngoingRound(game)
             ?: throw notFoundError("Round with ID $roundId does not exist in game $gameId.")
+        checkPlayerIsInGame(game)
 
         game.rounds.remove(ongoingRound)
         game.rounds += ongoingRound.copy(
@@ -93,6 +96,13 @@ class GameService(
         val unfinishedRounds = game.rounds.filter { !it.isFinished() }
         check(unfinishedRounds.size <= 1) { "There must be at most one unfinished round in game ${game.id}, but there are ${unfinishedRounds.size}." }
         return unfinishedRounds.firstOrNull()
+    }
+
+    private fun checkPlayerIsInGame(game: Game) {
+        val player = playerService.getPlayer()
+        if(!isPlayerInGame(player, game)) {
+            throw forbidden("Player with ID '${player.id}' is not part of game '${game.id}'")
+        }
     }
 
     private fun isPlayerInGame(player: Player, game: Game): Boolean {

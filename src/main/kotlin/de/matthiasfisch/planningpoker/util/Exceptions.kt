@@ -14,6 +14,9 @@ fun notFoundError(message: String? = null) =
 fun unauthorized(message: String? = null) =
     ResponseStatusException(HttpStatusCode.valueOf(401), message)
 
+fun forbidden(message: String? = null) =
+    ResponseStatusException(HttpStatusCode.valueOf(403), message)
+
 fun conflict(message: String? = null) =
     ResponseStatusException(HttpStatusCode.valueOf(409), message)
 

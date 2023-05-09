@@ -8,6 +8,7 @@ import io.kotest.core.extensions.Extension
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.extensions.spring.SpringExtension
 import io.kotest.matchers.collections.shouldBeEmpty
+import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotBeBlank
@@ -31,17 +32,18 @@ class GameControllerIT(
     @Autowired
     private lateinit var gameRepository: GameRepository
 
-    fun createGame(name: String, password: String?, cards: List<Int>): Game {
+    fun createGame(name: String, password: String?, cards: List<Int>, players: List<Player> = listOf()): Game {
         return gameRepository.save(Game(
             name = name,
             password = password,
-            playableCards = cards.map { Card(it) }
+            playableCards = cards.map { Card(it) },
+            players = players.toMutableList()
         )).also {
             cleanup.addTask { gameRepository.delete(it) }
         }
     }
 
-    fun createPlayerSession(): Pair<Player, String> {
+    final fun createPlayerSession(): Pair<Player, String> {
         val response = RestAssured.given()
             .header("Content-Type", "application/json")
             .body(PlayerStub("it-player"), ObjectMapperType.JACKSON_2)
@@ -243,6 +245,94 @@ class GameControllerIT(
                     .then()
                     .statusCode(400)
                     .body(Matchers.containsString("Playable cards are duplicated: 2, 3"))
+            }
+        }
+
+        context("POST /v1/games/{gameId}/rounds") {
+            val (player, sessionId) = createPlayerSession()
+
+            test("Start round -> 200") {
+                // Arrange
+                val game = createGame("some-game", null, listOf(1, 2, 3), listOf(player))
+                val stub = RoundStub(
+                    topic = "Some topic"
+                )
+
+                // Act
+                val rounds = Api.games.startRound(game.id!!, stub, sessionId)
+
+                // Assert
+                rounds.shouldHaveSize(1)
+                rounds.map { it["topic"] } shouldBe listOf(stub.topic)
+            }
+
+            test("Start round with empty topic -> 200") {
+                // Arrange
+                val game = createGame("some-game", null, listOf(1, 2, 3), listOf(player))
+                val stub = RoundStub(
+                    topic = ""
+                )
+
+                // Act
+                val rounds = Api.games.startRound(game.id!!, stub, sessionId)
+
+                // Assert
+                rounds.shouldHaveSize(1)
+                rounds.map { it["topic"] } shouldBe listOf("")
+            }
+
+            test("Start round with non-existing game -> 404") {
+                // Arrange
+                val stub = RoundStub(
+                    topic = "Round for non existing game"
+                )
+
+                // Act + Assert
+                Api.games.startRoundResponse("not-existing", stub, sessionId)
+                    .then()
+                    .statusCode(404)
+                    .body(Matchers.containsString("Game with ID not-existing does not exist"))
+            }
+
+            test("Start round without session -> 401") {
+                // Arrange
+                val game = createGame("some-game", null, listOf(1, 2, 3))
+                val stub = RoundStub(
+                    topic = "Some topic"
+                )
+
+                // Act + Assert
+                Api.games.startRoundResponse(game.id!!, stub, sessionId = null)
+                    .then()
+                    .statusCode(401)
+            }
+
+            test("Start round as player that did not join -> 401") {
+                // Arrange
+                val game = createGame("some-game", null, listOf(1, 2, 3), listOf(player))
+                val (otherPlayer, otherSessionId) = createPlayerSession()
+
+                val stub = RoundStub(
+                    topic = "Some topic"
+                )
+
+                // Act + Assert
+                Api.games.startRoundResponse(game.id!!, stub, sessionId = otherSessionId)
+                    .then()
+                    .statusCode(403)
+                    .body(Matchers.containsString("Player with ID '${otherPlayer.id}' is not part of game '${game.id}'"))
+            }
+
+            test("Start round while one still ongoing -> 409") {
+                // Arrange
+                val game = createGame("some-game", null, listOf(1, 2, 3), listOf(player))
+                Api.games.startRound(game.id!!, RoundStub("First Round"), sessionId)
+
+                // Act + Assert
+                Api.games.startRoundResponse(game.id!!, RoundStub("Second Round"), sessionId)
+                    .then()
+                    .statusCode(409)
+                    .body(Matchers.containsString("is still ongoing."))
             }
         }
     }
