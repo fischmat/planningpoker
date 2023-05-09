@@ -1,0 +1,29 @@
+version: '2'
+services:
+  mongo:
+    image: mongo:6.0
+    container_name: mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: "test"
+      MONGO_INITDB_DATABASE: "poker"
+    ports:
+      - "27017:27017"
+    networks:
+      - it-net
+  initialize-mongo:
+    image: mongo:6.0
+    restart: on-failure
+    environment:
+      MONGO_HOST: mongo
+      MONGO_ROOT_USER: root
+      MONGO_ROOT_PASSWORD: test
+    volumes:
+      - ./initialize-mongo.sh:/initialize-mongo.sh
+    depends_on:
+      - mongo
+    entrypoint: [ "/initialize-mongo.sh" ]
+    networks:
+      - it-net
+networks:
+  it-net:

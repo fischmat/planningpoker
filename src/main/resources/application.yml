@@ -3,6 +3,3 @@ spring:
   data:
     mongodb:
       user:
-      password:
-      uri:
-      lockDatabase:
