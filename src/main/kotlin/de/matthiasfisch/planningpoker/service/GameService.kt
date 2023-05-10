@@ -13,7 +13,8 @@ import org.springframework.transaction.annotation.Transactional
 @Transactional
 class GameService(
     private val playerService: PlayerService,
-    private val gameRepo: GameRepository
+    private val gameRepo: GameRepository,
+    private val passwordHashing: PasswordHashingService
 ) {
     fun getPagedGames(pageable: Pageable): Page<Game> {
         return gameRepo.findAll(pageable)
@@ -29,7 +30,7 @@ class GameService(
             with(stub) {
                 Game(
                     name = name,
-                    password = password,
+                    passwordHash = password?.let { passwordHashing.encodePlaintext(it) },
                     playableCards = playableCards
                 )
             }

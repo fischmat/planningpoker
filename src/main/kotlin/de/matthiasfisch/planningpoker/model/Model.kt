@@ -1,7 +1,7 @@
 package de.matthiasfisch.planningpoker.model
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
-import de.matthiasfisch.planningpoker.util.JsonMasked
 import org.springframework.data.annotation.Id
 import org.springframework.data.mongodb.core.mapping.Document
 import org.springframework.data.mongodb.repository.MongoRepository
@@ -15,15 +15,16 @@ data class Player (
 )
 
 @Document("games")
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class Game(
     @Id val id: String? = null,
     val name: String,
-    @JsonMasked val password: String?,
+    @JsonIgnore val passwordHash: String?,
     val playableCards: List<Card>
 ) {
     init {
         require(name.isNotEmpty()) { "Name of game must not be blank." }
-        require(password == null || password.isNotEmpty()) { "Password must be not blank if specified." }
+        require(passwordHash == null || passwordHash.isNotEmpty()) { "Password must be not blank if specified." }
         require(playableCards.isNotEmpty()) { "No playable cards are set for the game." }
         val duplicateCards = playableCards.filter { c ->
             playableCards.count { it.value == c.value } > 1
@@ -32,6 +33,8 @@ data class Game(
             "Playable cards are duplicated: ${duplicateCards.map { it.value }.joinToString(", ")}"
         }
     }
+
+    fun isHasPassword() = passwordHash != null
 }
 
 data class Card(

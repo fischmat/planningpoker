@@ -8,15 +8,16 @@ import io.restassured.http.Method
 import io.restassured.mapper.ObjectMapperType
 import io.restassured.response.Response
 import io.restassured.specification.RequestSpecification
+import org.springframework.http.HttpHeaders
 
 object Games {
 
-    fun getPage(page: Int, limit: Int): PagedResult<Map<String, String>> =
+    fun getPage(page: Int, limit: Int): PagedResult<Map<String, Any>> =
         getPageResponse(page, limit)
             .then()
             .statusCode(200)
             .extract()
-            .`as`(PagedResult::class.java) as PagedResult<Map<String, String>>
+            .`as`(PagedResult::class.java) as PagedResult<Map<String, Any>>
 
     fun getPageResponse(page: Int, limit: Int): Response =
         RestAssured.given()
@@ -50,6 +51,33 @@ object Games {
             .statusCode(200)
             .extract()
             .`as`(Game::class.java)
+
+    fun joinGameResponse(gameId: String, sessionId: String?, bearerToken: String?): Response =
+        RestAssured.given()
+            .addSessionId(sessionId)
+            .addBearerToken(bearerToken)
+            .`when`()
+            .request(Method.POST, "/v1/games/{gameId}/players", gameId)
+
+    fun joinGame(gameId: String, sessionId: String?, bearerToken: String?): Player =
+        joinGameResponse(gameId, sessionId, bearerToken)
+            .then()
+            .statusCode(200)
+            .extract()
+            .`as`(Player::class.java)
+
+    fun leaveGameResponse(gameId: String, sessionId: String?): Response =
+        RestAssured.given()
+            .addSessionId(sessionId)
+            .`when`()
+            .request(Method.DELETE, "/v1/games/{gameId}/players", gameId)
+
+    fun leaveGame(gameId: String, sessionId: String?, bearerToken: String?): Player =
+        leaveGameResponse(gameId, sessionId)
+            .then()
+            .statusCode(200)
+            .extract()
+            .`as`(Player::class.java)
 
     fun getRoundsResponse(gameId: String, sessionId: String?): Response =
         RestAssured.given()
@@ -95,6 +123,13 @@ object Games {
     private fun RequestSpecification.addSessionId(sessionId: String?) =
         if (sessionId != null) {
             cookie(Api.sessionCookieName, sessionId)
+        } else {
+            this
+        }
+
+    private fun RequestSpecification.addBearerToken(bearerToken: String?) =
+        if (bearerToken != null) {
+            header(HttpHeaders.AUTHORIZATION, "Bearer $bearerToken")
         } else {
             this
         }

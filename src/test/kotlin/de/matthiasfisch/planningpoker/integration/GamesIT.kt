@@ -3,6 +3,7 @@ package de.matthiasfisch.planningpoker.integration
 import de.matthiasfisch.planningpoker.controller.Api
 import de.matthiasfisch.planningpoker.controller.Players.createPlayerSession
 import de.matthiasfisch.planningpoker.model.*
+import de.matthiasfisch.planningpoker.service.PasswordHashingService
 import de.matthiasfisch.planningpoker.util.CleanupExtension
 import de.matthiasfisch.planningpoker.util.RestAssuredExtension
 import io.kotest.core.extensions.Extension
@@ -10,10 +11,9 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.extensions.spring.SpringExtension
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContain
-import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotBeBlank
-import org.hamcrest.Matchers
+import org.hamcrest.Matchers.*
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
@@ -33,10 +33,13 @@ class GamesIT(
     @Autowired
     private lateinit var playerRepository: PlayerRepository
 
+    @Autowired
+    private lateinit var passwordHashing: PasswordHashingService
+
     fun createGame(name: String, password: String?, cards: List<Int>, players: List<Player> = listOf()): Game {
         return gameRepository.save(Game(
             name = name,
-            password = password,
+            passwordHash = password?.let { passwordHashing.encodePlaintext(it) },
             playableCards = cards.map { Card(it) }
         )).also { game ->
             players.forEach { player ->
@@ -84,13 +87,13 @@ class GamesIT(
                 firstPage.pageSize shouldBe 3
                 firstPage.totalPages shouldBe 2
                 firstPage.items.map { it["id"] } shouldBe listOf(game1.id, game2.id, game3.id)
-                firstPage.items.map { it["password"] } shouldBe listOf("****", null, null)
+                firstPage.items.map { it["hasPassword"] } shouldBe listOf(true, false, false)
 
                 secondPage.page shouldBe 1
                 secondPage.pageSize shouldBe 3
                 secondPage.totalPages shouldBe 2
                 secondPage.items.map { it["id"] } shouldBe listOf(game4.id, game5.id)
-                secondPage.items.map { it["password"] } shouldBe listOf("****", null)
+                secondPage.items.map { it["hasPassword"] } shouldBe listOf(true, false)
 
                 thirdPage.page shouldBe 2
                 thirdPage.pageSize shouldBe 3
@@ -122,7 +125,6 @@ class GamesIT(
                 result.id shouldBe game.id
                 result.name shouldBe game.name
                 result.playableCards shouldBe game.playableCards
-                result.password shouldBe "****"
             }
 
             test("Get non-existing game -> 404") {
@@ -155,7 +157,6 @@ class GamesIT(
                 result.id.shouldNotBeBlank()
                 result.name shouldBe stub.name
                 result.playableCards shouldBe stub.playableCards
-                result.password.shouldBeNull()
 
                 Api.players.getPlayer(player.id!!).gameIds shouldContain result.id
             }
@@ -177,9 +178,28 @@ class GamesIT(
                 result.id.shouldNotBeBlank()
                 result.name shouldBe stub.name
                 result.playableCards shouldBe stub.playableCards
-                result.password shouldBe "****"
 
                 Api.players.getPlayer(player.id!!).gameIds shouldContain result.id
+            }
+
+            test("Password or hash not in response") {
+                // Arrange
+                val password = "some password"
+                val stub = GameStub(
+                    name = "My test game with password",
+                    password = password,
+                    playableCards = listOf(Card(1), Card(2), Card(5))
+                )
+
+                // Act + Assert
+                Api.games.createGameResponse(stub, sessionId)
+                    .then()
+                    .statusCode(200)
+                    .body(
+                        not(containsString(password)),
+                        not(containsString(passwordHashing.createIntermediate(password))),
+                        not(containsString(passwordHashing.encodePlaintext(password))),
+                    ).body("hasPassword", `is`(true))
             }
 
             test("Create game without session -> 401") {
@@ -208,7 +228,7 @@ class GamesIT(
                 Api.games.createGameResponse(stub, sessionId)
                     .then()
                     .statusCode(400)
-                    .body(Matchers.containsString("Name of game must not be blank."))
+                    .body(containsString("Name of game must not be blank."))
             }
 
             test("Create game without cards -> 400") {
@@ -223,7 +243,7 @@ class GamesIT(
                 Api.games.createGameResponse(stub, sessionId)
                     .then()
                     .statusCode(400)
-                    .body(Matchers.containsString("No playable cards are set for the game."))
+                    .body(containsString("No playable cards are set for the game."))
             }
 
             test("Create game with same card twice -> 400") {
@@ -238,7 +258,72 @@ class GamesIT(
                 Api.games.createGameResponse(stub, sessionId)
                     .then()
                     .statusCode(400)
-                    .body(Matchers.containsString("Playable cards are duplicated: 2, 3"))
+                    .body(containsString("Playable cards are duplicated: 2, 3"))
+            }
+        }
+
+        context("POST /api/v1/games/{gameId}/players") {
+            test("Join unprotected game -> 200") {
+                // Arrange
+                val game = createGame("test", null, listOf(1, 2, 3))
+                val (player, sessionId) = createPlayerSession()
+
+                // Act
+                val result = Api.games.joinGame(game.id!!, sessionId, null)
+
+                // Assert
+                result shouldBe player.copy(gameIds = mutableListOf(game.id!!))
+            }
+
+            test("Join protected game with password -> 200") {
+                // Arrange
+                val password = "super secret password"
+                val game = createGame("test", password, listOf(1, 2, 3))
+                val (player, sessionId) = createPlayerSession()
+
+                val bearerToken = passwordHashing.createIntermediate(password)
+
+                // Act
+                val result = Api.games.joinGame(game.id!!, sessionId, bearerToken)
+
+                // Assert
+                result shouldBe player.copy(gameIds = mutableListOf(game.id!!))
+            }
+
+            test("Join game without session -> 401") {
+                // Arrange
+                val game = createGame("test", null, listOf(1, 2, 3))
+
+                // Act + Assert
+                Api.games.joinGameResponse(game.id!!, null, null)
+                    .then()
+                    .statusCode(401)
+            }
+
+            test("Join protected game without password -> 401") {
+                // Arrange
+                val password = "super secret password"
+                val game = createGame("test", password, listOf(1, 2, 3))
+                val (_, sessionId) = createPlayerSession()
+
+                // Act + Assert
+                Api.games.joinGameResponse(game.id!!, sessionId, null)
+                    .then()
+                    .statusCode(401)
+                    .header("WWW-Authenticate", "Bearer")
+            }
+
+            test("Join protected game with wrong password -> 401") {
+                // Arrange
+                val password = "super secret password"
+                val game = createGame("test", password, listOf(1, 2, 3))
+                val (_, sessionId) = createPlayerSession()
+
+                // Act + Assert
+                Api.games.joinGameResponse(game.id!!, sessionId, "wrongpassword")
+                    .then()
+                    .statusCode(401)
+                    .header("WWW-Authenticate", "Bearer")
             }
         }
     }

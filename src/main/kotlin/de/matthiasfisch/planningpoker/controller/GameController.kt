@@ -51,12 +51,12 @@ class GameController(
     }
 
     @PostMapping("/{gameId}/players")
-    fun joinGame(@PathVariable("gameId") gameId: String) {
-        playerService.joinGame(gameId)
+    fun joinGame(@PathVariable("gameId") gameId: String): Player {
+        return playerService.joinGame(gameId)
     }
 
     @DeleteMapping("/{gameId}/players")
-    fun leaveGame(@PathVariable("gameId") gameId: String) {
-        playerService.leaveGame(gameId)
+    fun leaveGame(@PathVariable("gameId") gameId: String): Player {
+        return playerService.leaveGame(gameId)
     }
 }

@@ -3,6 +3,7 @@ package de.matthiasfisch.planningpoker.integration
 import de.matthiasfisch.planningpoker.controller.Api
 import de.matthiasfisch.planningpoker.controller.Players
 import de.matthiasfisch.planningpoker.model.*
+import de.matthiasfisch.planningpoker.service.PasswordHashingService
 import de.matthiasfisch.planningpoker.util.CleanupExtension
 import de.matthiasfisch.planningpoker.util.RestAssuredExtension
 import io.kotest.core.extensions.Extension
@@ -38,10 +39,13 @@ class RoundsIT(
     @Autowired
     private lateinit var voteRepository: VoteRepository
 
+    @Autowired
+    private lateinit var passwordHashing: PasswordHashingService
+
     fun createGame(name: String, password: String?, cards: List<Int>, players: List<Player> = listOf()): Game {
         return gameRepository.save(Game(
             name = name,
-            password = password,
+            passwordHash = password?.let { passwordHashing.encodePlaintext(it) },
             playableCards = cards.map { Card(it) }
         )).also { game ->
             players.forEach { player ->

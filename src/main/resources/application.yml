@@ -3,3 +3,10 @@ spring:
   data:
     mongodb:
       user:
+
+security:
+  password-hashing:
+    secret: ""
+    salt-length: 16
+    iterations: 31000
+    algorithm: PBKDF2WithHmacSHA256
