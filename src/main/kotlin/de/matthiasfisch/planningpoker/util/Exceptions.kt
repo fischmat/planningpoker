@@ -8,6 +8,9 @@ import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler
 
+fun badRequestError(message: String? = null) =
+    ResponseStatusException(HttpStatusCode.valueOf(400), message)
+
 fun notFoundError(message: String? = null) =
     ResponseStatusException(HttpStatusCode.valueOf(404), message)
 

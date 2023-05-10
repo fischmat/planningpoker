@@ -2,14 +2,12 @@
 
 package de.matthiasfisch.planningpoker.controller
 
-import de.matthiasfisch.planningpoker.model.Game
-import de.matthiasfisch.planningpoker.model.GameStub
-import de.matthiasfisch.planningpoker.model.PagedResult
-import de.matthiasfisch.planningpoker.model.RoundStub
+import de.matthiasfisch.planningpoker.model.*
 import io.restassured.RestAssured
 import io.restassured.http.Method
 import io.restassured.mapper.ObjectMapperType
 import io.restassured.response.Response
+import io.restassured.specification.RequestSpecification
 
 object Games {
 
@@ -42,13 +40,7 @@ object Games {
         RestAssured.given()
             .header("Content-Type", "application/json")
             .body(stub, ObjectMapperType.JACKSON_2)
-            .let {
-                if (sessionId != null) {
-                    it.cookie(Api.sessionCookieName, sessionId)
-                } else {
-                    it
-                }
-            }
+            .addSessionId(sessionId)
             .`when`()
             .request(Method.POST, "/v1/games")
 
@@ -59,24 +51,51 @@ object Games {
             .extract()
             .`as`(Game::class.java)
 
-    fun startRoundResponse(gameId: String, stub: RoundStub, sessionId: String?): Response =
+    fun getRoundsResponse(gameId: String, sessionId: String?): Response =
         RestAssured.given()
-            .header("Content-Type", "application/json")
-            .body(stub, ObjectMapperType.JACKSON_2)
-            .let {
-                if (sessionId != null) {
-                    it.cookie(Api.sessionCookieName, sessionId)
-                } else {
-                    it
-                }
-            }
+            .addSessionId(sessionId)
             .`when`()
-            .request(Method.POST, "/v1/games/{gameId}/rounds", gameId)
+            .request(Method.GET, "/v1/games/{gameId}/rounds", gameId)
 
-    fun startRound(gameId: String, stub: RoundStub, sessionId: String?): List<Map<String, String>> =
-        startRoundResponse(gameId, stub, sessionId)
+    fun getRounds(gameId: String, sessionId: String?): List<Map<String, String>> =
+        getRoundsResponse(gameId, sessionId)
             .then()
             .statusCode(200)
             .extract()
             .`as`(List::class.java) as List<Map<String, String>>
+
+    fun startRoundResponse(gameId: String, stub: RoundStub, sessionId: String?): Response =
+        RestAssured.given()
+            .header("Content-Type", "application/json")
+            .body(stub, ObjectMapperType.JACKSON_2)
+            .addSessionId(sessionId)
+            .`when`()
+            .request(Method.POST, "/v1/games/{gameId}/rounds", gameId)
+
+    fun startRound(gameId: String, stub: RoundStub, sessionId: String?): Round =
+        startRoundResponse(gameId, stub, sessionId)
+            .then()
+            .statusCode(200)
+            .extract()
+            .`as`(Round::class.java)
+
+    fun endRoundResponse(gameId: String, roundId: String, sessionId: String?) =
+        RestAssured.given()
+            .addSessionId(sessionId)
+            .`when`()
+            .request(Method.DELETE, "/v1/games/{gameId}/rounds/{roundId}", gameId, roundId)
+
+    fun endRound(gameId: String, roundId: String, sessionId: String?) =
+        endRoundResponse(gameId, roundId, sessionId)
+            .then()
+            .statusCode(200)
+            .extract()
+            .`as`(Round::class.java)
+
+    private fun RequestSpecification.addSessionId(sessionId: String?) =
+        if (sessionId != null) {
+            cookie(Api.sessionCookieName, sessionId)
+        } else {
+            this
+        }
 }
