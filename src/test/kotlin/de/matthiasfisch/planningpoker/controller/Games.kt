@@ -72,7 +72,7 @@ object Games {
             .`when`()
             .request(Method.DELETE, "/v1/games/{gameId}/players", gameId)
 
-    fun leaveGame(gameId: String, sessionId: String?, bearerToken: String?): Player =
+    fun leaveGame(gameId: String, sessionId: String?): Player =
         leaveGameResponse(gameId, sessionId)
             .then()
             .statusCode(200)
