@@ -52,15 +52,16 @@ object Games {
             .extract()
             .`as`(Game::class.java)
 
-    fun joinGameResponse(gameId: String, sessionId: String?, bearerToken: String?): Response =
+    fun joinGameResponse(gameId: String, sessionId: String?, bearerToken: String?, forwardedProto: String = "https"): Response =
         RestAssured.given()
             .addSessionId(sessionId)
             .addBearerToken(bearerToken)
+            .addHeader("X-Forwarded-Proto", forwardedProto)
             .`when`()
             .request(Method.POST, "/v1/games/{gameId}/players", gameId)
 
-    fun joinGame(gameId: String, sessionId: String?, bearerToken: String?): Player =
-        joinGameResponse(gameId, sessionId, bearerToken)
+    fun joinGame(gameId: String, sessionId: String?, bearerToken: String?, forwardedProto: String = "https"): Player =
+        joinGameResponse(gameId, sessionId, bearerToken, forwardedProto)
             .then()
             .statusCode(200)
             .extract()
@@ -130,6 +131,13 @@ object Games {
     private fun RequestSpecification.addBearerToken(bearerToken: String?) =
         if (bearerToken != null) {
             header(HttpHeaders.AUTHORIZATION, "Bearer $bearerToken")
+        } else {
+            this
+        }
+
+    private fun RequestSpecification.addHeader(header: String, value: String?) =
+        if (value != null) {
+            header(header, value)
         } else {
             this
         }

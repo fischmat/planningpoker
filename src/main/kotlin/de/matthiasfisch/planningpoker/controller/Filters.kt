@@ -15,13 +15,20 @@ class GameAuthFilter(
     private val gameRepository: GameRepository,
     private val passwordHashing: PasswordHashingService
 ) : OncePerRequestFilter() {
-    private val protectedPathRegex = "^/api/v[0-9]+/games/(.*?)/players$".toRegex()
+    private val protectedPathRegex = ".*/api/v[0-9]+/games/(.*?)/players$".toRegex()
 
     override fun doFilterInternal(
         request: HttpServletRequest,
         response: HttpServletResponse,
         filterChain: FilterChain
     ) {
+        // Only allow via HTTPS
+        if (request.scheme.lowercase() != "https") {
+            response.status = 426
+            response.addHeader(HttpHeaders.UPGRADE, "HTTPS")
+            return
+        }
+
         val game = getGameFromPath(request.servletPath).orElse(null)
         val suppliedHash = request.getHeader(HttpHeaders.AUTHORIZATION)
             ?.takeIf { it.startsWith("Bearer ") }
