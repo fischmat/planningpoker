@@ -15,7 +15,8 @@ class RoundService(
     private val roundRepository: RoundRepository,
     private val gameService: GameService,
     private val playerService: PlayerService,
-    private val voteRepository: VoteRepository
+    private val voteRepository: VoteRepository,
+    private val gameEvents: GameEventService
 ) {
     fun getRound(roundId: String): Round {
         return roundRepository.findById(roundId).orElseThrow {
@@ -42,7 +43,9 @@ class RoundService(
                 gameId = gameId,
                 topic = stub.topic
             )
-        )
+        ).also {
+            gameEvents.notifyPlayerRoundStarted(gameId, it)
+        }
     }
 
     fun endRound(gameId: String, roundId: String): Round {
@@ -59,7 +62,9 @@ class RoundService(
             ended = Instant.now(),
             result = computeRoundResults(round)
         )
-        return roundRepository.save(finishedRound)
+        return roundRepository.save(finishedRound).also {
+            gameEvents.notifyPlayerRoundEnded(gameId, it)
+        }
     }
 
     fun putVote(roundId: String, card: Card): Vote {
@@ -81,7 +86,9 @@ class RoundService(
                 player = player,
                 card = card
             )
-        )
+        ).also {
+            gameEvents.notifyPlayerVoteSubmitted(round.gameId, round, it)
+        }
     }
 
     fun revokeVote(roundId: String) {
@@ -91,7 +98,11 @@ class RoundService(
         val player = playerService.getPlayer()
         voteRepository.findByRoundId(roundId)
             .filter { it.player.id == player.id }
-            .forEach { voteRepository.deleteById(it.id!!) }
+            .forEach { vote ->
+                voteRepository.deleteById(vote.id!!).also {
+                    gameEvents.notifyPlayerVoteRevoked(round.gameId, round, vote)
+                }
+            }
     }
 
     private fun computeRoundResults(round: Round): RoundResults {

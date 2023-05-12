@@ -13,7 +13,8 @@ private const val SESSION_PLAYER_ID_ATTR = "playerId"
 @Service
 class PlayerService(
     private val playerRepository: PlayerRepository,
-    private val session: HttpSession
+    private val session: HttpSession,
+    private val gameEvents: GameEventService
 ) {
     fun getPlayer(): Player {
         return currentPlayerId()?.let { getPlayer(it) } ?: throw unauthorized()
@@ -47,7 +48,9 @@ class PlayerService(
             return player
         }
         player.gameIds.add(gameId)
-        return playerRepository.save(player)
+        return playerRepository.save(player).also {
+            gameEvents.notifyPlayerJoined(gameId, it)
+        }
     }
 
     fun leaveGame(gameId: String): Player {
@@ -56,7 +59,9 @@ class PlayerService(
             throw badRequestError("Player ${player.id} did not join game ${gameId}.")
         }
         player.gameIds.remove(gameId)
-        return playerRepository.save(player)
+        return playerRepository.save(player).also {
+            gameEvents.notifyPlayerLeft(gameId, it)
+        }
     }
 
     private fun currentPlayerId() = session.getAttribute(SESSION_PLAYER_ID_ATTR).let { it as? String }
