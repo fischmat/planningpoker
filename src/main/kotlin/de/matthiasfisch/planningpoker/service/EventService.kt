@@ -8,13 +8,17 @@ import de.matthiasfisch.planningpoker.model.Event
 import jakarta.annotation.PreDestroy
 import mu.KotlinLogging.logger
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.ExitCodeGenerator
+import org.springframework.boot.SpringApplication
+import org.springframework.context.ApplicationContext
 import org.springframework.stereotype.Service
 
 @Service
 class EventService(
     @Value("\${websockets.listen-address}") bindAddress: String,
     @Value("\${websockets.port}") val bindPort: Int,
-    @Value("\${websockets.allowed-origin}") val allowedOrigin: String?
+    @Value("\${websockets.allowed-origin}") val allowedOrigin: String?,
+    private val applicationContext: ApplicationContext
 ) {
     private val log = logger {}
     private val server: SocketIOServer
@@ -33,7 +37,16 @@ class EventService(
         server.addDisconnectListener { log.debug { "SocketIO client ${it.remoteAddress} disconnected." } }
 
         log.info { "Starting SocketIO server on ${bindAddress.takeIf { it.isNotBlank() } ?: "0.0.0.0"}:$bindPort." }
-        server.start()
+        kotlin.runCatching {
+            server.start()
+        }.onFailure { e ->
+            SpringApplication.exit(applicationContext, object: ExitCodeGenerator {
+                override fun getExitCode(): Int {
+                    log.error(e) { "Could not start Socket.IO Server. Terminating the application..." }
+                    return 1
+                }
+            })
+        }
     }
 
     fun <T : Event> addListener(eventName: String, eventClass: Class<T>, listener: DataListener<T>) {
