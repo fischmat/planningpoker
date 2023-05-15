@@ -13,7 +13,8 @@ import org.springframework.stereotype.Service
 @Service
 class EventService(
     @Value("\${websockets.listen-address}") bindAddress: String,
-    @Value("\${websockets.port}") bindPort: Int
+    @Value("\${websockets.port}") val bindPort: Int,
+    @Value("\${websockets.allowed-origin}") val allowedOrigin: String?
 ) {
     private val log = logger {}
     private val server: SocketIOServer
@@ -25,6 +26,7 @@ class EventService(
                 hostname = bindAddress
             }
             port = bindPort
+            allowedOrigin?.let { origin = it }
         }
         server = SocketIOServer(config)
         server.addConnectListener { log.debug { "SocketIO client ${it.remoteAddress} has connected." } }
