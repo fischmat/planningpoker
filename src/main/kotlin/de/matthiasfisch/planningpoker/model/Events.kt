@@ -4,8 +4,7 @@ sealed interface Event
 
 data class EnterGameCommand(
     val gameId: String,
-    val passwordHash: String?,
-    val player: Player
+    val passwordHash: String?
 ): Event {
     companion object {
         const val EVENT_NAME = "enterGame"

@@ -24,6 +24,8 @@ class PlayerService(
         playerRepository.findById(id)
             .orElseThrow { notFoundError("Player with ID $id does not exist") }
 
+    fun isPlayerSession() = currentPlayerId() != null
+
     fun getOrCreatePlayer(name: String): Player {
         val playerId = currentPlayerId()
 

@@ -26,7 +26,6 @@ class GameService(
     }
 
     fun createGame(stub: GameStub): Game {
-        playerService.getPlayer() // Check player exists
         return gameRepo.save(
             with(stub) {
                 Game(
@@ -36,7 +35,9 @@ class GameService(
                 )
             }
         ).also {
-            playerService.joinGame(it.id!!)
+            if (playerService.isPlayerSession()) {
+                playerService.joinGame(it.id!!)
+            }
         }
     }
 }

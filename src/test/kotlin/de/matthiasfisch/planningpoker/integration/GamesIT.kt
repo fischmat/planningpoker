@@ -10,7 +10,6 @@ import io.kotest.core.extensions.Extension
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.extensions.spring.SpringExtension
 import io.kotest.matchers.collections.shouldBeEmpty
-import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotBeBlank
 import org.hamcrest.Matchers.*
@@ -138,7 +137,7 @@ class GamesIT(
         }
 
         context("POST /v1/games") {
-            val (player, sessionId) = createPlayerSession()
+            val (_, sessionId) = createPlayerSession()
 
             test("Create game without password -> 200") {
                 // Arrange
@@ -157,8 +156,6 @@ class GamesIT(
                 result.id.shouldNotBeBlank()
                 result.name shouldBe stub.name
                 result.playableCards shouldBe stub.playableCards
-
-                Api.players.getPlayer(player.id!!).gameIds shouldContain result.id
             }
 
             test("Create game with password -> 200") {
@@ -178,8 +175,6 @@ class GamesIT(
                 result.id.shouldNotBeBlank()
                 result.name shouldBe stub.name
                 result.playableCards shouldBe stub.playableCards
-
-                Api.players.getPlayer(player.id!!).gameIds shouldContain result.id
             }
 
             test("Password or hash not in response") {
@@ -202,7 +197,7 @@ class GamesIT(
                     ).body("hasPassword", `is`(true))
             }
 
-            test("Create game without session -> 401") {
+            test("Create game without session -> 200") {
                 // Arrange
                 val stub = GameStub(
                     name = "My test game",
@@ -213,7 +208,7 @@ class GamesIT(
                 // Act + Assert
                 Api.games.createGameResponse(stub, null)
                     .then()
-                    .statusCode(401)
+                    .statusCode(200)
             }
 
             test("Create game with empty name -> 400") {
