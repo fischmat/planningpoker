@@ -3,6 +3,7 @@ package de.matthiasfisch.planningpoker.service
 import de.matthiasfisch.planningpoker.model.Player
 import de.matthiasfisch.planningpoker.model.PlayerRepository
 import de.matthiasfisch.planningpoker.model.PlayerStub
+import de.matthiasfisch.planningpoker.util.badRequestError
 import de.matthiasfisch.planningpoker.util.notFoundError
 import de.matthiasfisch.planningpoker.util.unauthorized
 import jakarta.servlet.http.HttpSession
@@ -12,32 +13,58 @@ private const val SESSION_PLAYER_ID_ATTR = "playerId"
 
 @Service
 class PlayerService(
-    private val playerRepo: PlayerRepository,
-    private val session: HttpSession
+    private val playerRepository: PlayerRepository,
+    private val session: HttpSession,
+    private val gameEvents: GameEventService
 ) {
     fun getPlayer(): Player {
         return currentPlayerId()?.let { getPlayer(it) } ?: throw unauthorized()
     }
 
     fun getPlayer(id: String): Player =
-        playerRepo.findById(id)
+        playerRepository.findById(id)
             .orElseThrow { notFoundError("Player with ID $id does not exist") }
+
+    fun isPlayerSession() = currentPlayerId() != null
 
     fun getOrCreatePlayer(stub: PlayerStub): Player {
         val playerId = currentPlayerId()
 
         return if (playerId != null) {
-            playerRepo.findById(playerId)
+            playerRepository.findById(playerId)
                 .orElseThrow { notFoundError("Player $playerId does not exist") }
         } else {
-            playerRepo.save(
+            playerRepository.save(
                 Player(
                     name = stub.name,
+                    gameIds = mutableListOf(),
                     avatar = stub.avatar
                 )
             ).also {
                 session.setAttribute(SESSION_PLAYER_ID_ATTR, it.id)
             }
+        }
+    }
+
+    fun joinGame(gameId: String): Player {
+        val player = getPlayer()
+        if (player.gameIds.any { it == gameId }) {
+            return player
+        }
+        player.gameIds.add(gameId)
+        return playerRepository.save(player).also {
+            gameEvents.notifyPlayerJoined(gameId, it)
+        }
+    }
+
+    fun leaveGame(gameId: String): Player {
+        val player = getPlayer()
+        if (player.gameIds.none { it == gameId }) {
+            throw badRequestError("Player ${player.id} did not join game ${gameId}.")
+        }
+        player.gameIds.remove(gameId)
+        return playerRepository.save(player).also {
+            gameEvents.notifyPlayerLeft(gameId, it)
         }
     }
 

@@ -1,8 +1,25 @@
+server:
+  url: http://localhost:8080
 
 spring:
   data:
     mongodb:
       user:
+
+security:
+  password-hashing:
+    secret: ""
+    salt-length: 16
+    iterations: 31000
+    algorithm: PBKDF2WithHmacSHA256
+
+websockets:
+  # Hostname to listen at. Leave empty for 0.0.0.0 or ::0.
+  listen-address:
+  # Port for listening at for websocket connections
+  port: 8081
+  # The allowed origin for the websocket connection
+  allowed-origin:
 
 avatars:
   dicebear:

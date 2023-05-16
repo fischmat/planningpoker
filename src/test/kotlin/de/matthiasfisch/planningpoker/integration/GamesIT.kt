@@ -1,21 +1,18 @@
-package de.matthiasfisch.planningpoker
+package de.matthiasfisch.planningpoker.integration
 
 import de.matthiasfisch.planningpoker.controller.Api
+import de.matthiasfisch.planningpoker.controller.Players.createPlayerSession
 import de.matthiasfisch.planningpoker.model.*
+import de.matthiasfisch.planningpoker.service.PasswordHashingService
 import de.matthiasfisch.planningpoker.util.CleanupExtension
 import de.matthiasfisch.planningpoker.util.RestAssuredExtension
 import io.kotest.core.extensions.Extension
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.extensions.spring.SpringExtension
 import io.kotest.matchers.collections.shouldBeEmpty
-import io.kotest.matchers.collections.shouldHaveSize
-import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotBeBlank
-import io.restassured.RestAssured
-import io.restassured.http.Method
-import io.restassured.mapper.ObjectMapperType
-import org.hamcrest.Matchers
+import org.hamcrest.Matchers.*
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
@@ -23,7 +20,7 @@ import org.springframework.test.context.ActiveProfiles
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("it")
-class GameControllerIT(
+class GamesIT(
     @LocalServerPort val serverPort: Int
 ): FunSpec() {
     override fun extensions(): List<Extension> = listOf(SpringExtension, RestAssuredExtension(serverPort))
@@ -32,26 +29,25 @@ class GameControllerIT(
     @Autowired
     private lateinit var gameRepository: GameRepository
 
+    @Autowired
+    private lateinit var playerRepository: PlayerRepository
+
+    @Autowired
+    private lateinit var passwordHashing: PasswordHashingService
+
     fun createGame(name: String, password: String?, cards: List<Int>, players: List<Player> = listOf()): Game {
         return gameRepository.save(Game(
             name = name,
-            password = password,
-            playableCards = cards.map { Card(it) },
-            players = players.toMutableList()
-        )).also {
+            passwordHash = password?.let { passwordHashing.encodePlaintext(it) },
+            playableCards = cards.map { Card(it) }
+        )).also { game ->
+            players.forEach { player ->
+                player.gameIds.add(game.id!!)
+                playerRepository.save(player)
+            }
+        }.also {
             cleanup.addTask { gameRepository.delete(it) }
         }
-    }
-
-    final fun createPlayerSession(): Pair<Player, String> {
-        val response = RestAssured.given()
-            .header("Content-Type", "application/json")
-            .body(PlayerStub("it-player"), ObjectMapperType.JACKSON_2)
-            .`when`()
-            .request(Method.POST, "/v1/players")
-            .then()
-            .extract()
-        return response.`as`(Player::class.java) to response.cookie(Api.sessionCookieName)
     }
 
     init {
@@ -90,13 +86,13 @@ class GameControllerIT(
                 firstPage.pageSize shouldBe 3
                 firstPage.totalPages shouldBe 2
                 firstPage.items.map { it["id"] } shouldBe listOf(game1.id, game2.id, game3.id)
-                firstPage.items.map { it["password"] } shouldBe listOf("****", null, null)
+                firstPage.items.map { it["hasPassword"] } shouldBe listOf(true, false, false)
 
                 secondPage.page shouldBe 1
                 secondPage.pageSize shouldBe 3
                 secondPage.totalPages shouldBe 2
                 secondPage.items.map { it["id"] } shouldBe listOf(game4.id, game5.id)
-                secondPage.items.map { it["password"] } shouldBe listOf("****", null)
+                secondPage.items.map { it["hasPassword"] } shouldBe listOf(true, false)
 
                 thirdPage.page shouldBe 2
                 thirdPage.pageSize shouldBe 3
@@ -128,7 +124,6 @@ class GameControllerIT(
                 result.id shouldBe game.id
                 result.name shouldBe game.name
                 result.playableCards shouldBe game.playableCards
-                result.password shouldBe "****"
             }
 
             test("Get non-existing game -> 404") {
@@ -142,7 +137,7 @@ class GameControllerIT(
         }
 
         context("POST /v1/games") {
-            val (player, sessionId) = createPlayerSession()
+            val (_, sessionId) = createPlayerSession()
 
             test("Create game without password -> 200") {
                 // Arrange
@@ -161,9 +156,6 @@ class GameControllerIT(
                 result.id.shouldNotBeBlank()
                 result.name shouldBe stub.name
                 result.playableCards shouldBe stub.playableCards
-                result.password.shouldBeNull()
-                result.players shouldBe listOf(player)
-                result.rounds.shouldBeEmpty()
             }
 
             test("Create game with password -> 200") {
@@ -183,12 +175,29 @@ class GameControllerIT(
                 result.id.shouldNotBeBlank()
                 result.name shouldBe stub.name
                 result.playableCards shouldBe stub.playableCards
-                result.password shouldBe "****"
-                result.players shouldBe listOf(player)
-                result.rounds.shouldBeEmpty()
             }
 
-            test("Create game without session -> 401") {
+            test("Password or hash not in response") {
+                // Arrange
+                val password = "some password"
+                val stub = GameStub(
+                    name = "My test game with password",
+                    password = password,
+                    playableCards = listOf(Card(1), Card(2), Card(5))
+                )
+
+                // Act + Assert
+                Api.games.createGameResponse(stub, sessionId)
+                    .then()
+                    .statusCode(200)
+                    .body(
+                        not(containsString(password)),
+                        not(containsString(passwordHashing.createIntermediate(password))),
+                        not(containsString(passwordHashing.encodePlaintext(password))),
+                    ).body("hasPassword", `is`(true))
+            }
+
+            test("Create game without session -> 200") {
                 // Arrange
                 val stub = GameStub(
                     name = "My test game",
@@ -199,7 +208,7 @@ class GameControllerIT(
                 // Act + Assert
                 Api.games.createGameResponse(stub, null)
                     .then()
-                    .statusCode(401)
+                    .statusCode(200)
             }
 
             test("Create game with empty name -> 400") {
@@ -214,7 +223,7 @@ class GameControllerIT(
                 Api.games.createGameResponse(stub, sessionId)
                     .then()
                     .statusCode(400)
-                    .body(Matchers.containsString("Name of game must not be blank."))
+                    .body(containsString("Name of game must not be blank."))
             }
 
             test("Create game without cards -> 400") {
@@ -229,7 +238,7 @@ class GameControllerIT(
                 Api.games.createGameResponse(stub, sessionId)
                     .then()
                     .statusCode(400)
-                    .body(Matchers.containsString("No playable cards are set for the game."))
+                    .body(containsString("No playable cards are set for the game."))
             }
 
             test("Create game with same card twice -> 400") {
@@ -244,95 +253,72 @@ class GameControllerIT(
                 Api.games.createGameResponse(stub, sessionId)
                     .then()
                     .statusCode(400)
-                    .body(Matchers.containsString("Playable cards are duplicated: 2, 3"))
+                    .body(containsString("Playable cards are duplicated: 2, 3"))
             }
         }
 
-        context("POST /v1/games/{gameId}/rounds") {
-            val (player, sessionId) = createPlayerSession()
-
-            test("Start round -> 200") {
+        context("POST /api/v1/games/{gameId}/players") {
+            test("Join unprotected game -> 200") {
                 // Arrange
-                val game = createGame("some-game", null, listOf(1, 2, 3), listOf(player))
-                val stub = RoundStub(
-                    topic = "Some topic"
-                )
+                val game = createGame("test", null, listOf(1, 2, 3))
+                val (player, sessionId) = createPlayerSession()
 
                 // Act
-                val rounds = Api.games.startRound(game.id!!, stub, sessionId)
+                val result = Api.games.joinGame(game.id!!, sessionId, null)
 
                 // Assert
-                rounds.shouldHaveSize(1)
-                rounds.map { it["topic"] } shouldBe listOf(stub.topic)
+                result shouldBe player.copy(gameIds = mutableListOf(game.id!!))
             }
 
-            test("Start round with empty topic -> 200") {
+            test("Join protected game with password -> 200") {
                 // Arrange
-                val game = createGame("some-game", null, listOf(1, 2, 3), listOf(player))
-                val stub = RoundStub(
-                    topic = ""
-                )
+                val password = "super secret password"
+                val game = createGame("test", password, listOf(1, 2, 3))
+                val (player, sessionId) = createPlayerSession()
+
+                val bearerToken = passwordHashing.createIntermediate(password)
 
                 // Act
-                val rounds = Api.games.startRound(game.id!!, stub, sessionId)
+                val result = Api.games.joinGame(game.id!!, sessionId, bearerToken)
 
                 // Assert
-                rounds.shouldHaveSize(1)
-                rounds.map { it["topic"] } shouldBe listOf("")
+                result shouldBe player.copy(gameIds = mutableListOf(game.id!!))
             }
 
-            test("Start round with non-existing game -> 404") {
+            test("Join game without session -> 401") {
                 // Arrange
-                val stub = RoundStub(
-                    topic = "Round for non existing game"
-                )
+                val game = createGame("test", null, listOf(1, 2, 3))
 
                 // Act + Assert
-                Api.games.startRoundResponse("not-existing", stub, sessionId)
-                    .then()
-                    .statusCode(404)
-                    .body(Matchers.containsString("Game with ID not-existing does not exist"))
-            }
-
-            test("Start round without session -> 401") {
-                // Arrange
-                val game = createGame("some-game", null, listOf(1, 2, 3))
-                val stub = RoundStub(
-                    topic = "Some topic"
-                )
-
-                // Act + Assert
-                Api.games.startRoundResponse(game.id!!, stub, sessionId = null)
+                Api.games.joinGameResponse(game.id!!, null, null)
                     .then()
                     .statusCode(401)
             }
 
-            test("Start round as player that did not join -> 401") {
+            test("Join protected game without password -> 401") {
                 // Arrange
-                val game = createGame("some-game", null, listOf(1, 2, 3), listOf(player))
-                val (otherPlayer, otherSessionId) = createPlayerSession()
-
-                val stub = RoundStub(
-                    topic = "Some topic"
-                )
+                val password = "super secret password"
+                val game = createGame("test", password, listOf(1, 2, 3))
+                val (_, sessionId) = createPlayerSession()
 
                 // Act + Assert
-                Api.games.startRoundResponse(game.id!!, stub, sessionId = otherSessionId)
+                Api.games.joinGameResponse(game.id!!, sessionId, null)
                     .then()
-                    .statusCode(403)
-                    .body(Matchers.containsString("Player with ID '${otherPlayer.id}' is not part of game '${game.id}'"))
+                    .statusCode(401)
+                    .header("WWW-Authenticate", "Bearer")
             }
 
-            test("Start round while one still ongoing -> 409") {
+            test("Join protected game with wrong password -> 401") {
                 // Arrange
-                val game = createGame("some-game", null, listOf(1, 2, 3), listOf(player))
-                Api.games.startRound(game.id!!, RoundStub("First Round"), sessionId)
+                val password = "super secret password"
+                val game = createGame("test", password, listOf(1, 2, 3))
+                val (_, sessionId) = createPlayerSession()
 
                 // Act + Assert
-                Api.games.startRoundResponse(game.id!!, RoundStub("Second Round"), sessionId)
+                Api.games.joinGameResponse(game.id!!, sessionId, "wrongpassword")
                     .then()
-                    .statusCode(409)
-                    .body(Matchers.containsString("is still ongoing."))
+                    .statusCode(401)
+                    .header("WWW-Authenticate", "Bearer")
             }
         }
     }

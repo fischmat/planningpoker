@@ -13,24 +13,6 @@ data class PlayerStub(
     val avatar: AvatarProps? = null
 )
 
-data class RoundStub(
-    val topic: String
-)
-
-data class PagedResult<T>(
-    val items: List<T>,
-    val page: Int,
-    val pageSize: Int,
-    val totalPages: Int
-) {
-    constructor(page: Page<T>): this(
-        page.content,
-        page.pageable.pageNumber,
-        page.pageable.pageSize,
-        page.totalPages
-    )
-}
-
 data class AvatarProps(
     val backgroundColor: String,
     val earrings: Int?,
@@ -60,3 +42,32 @@ data class AvatarProps(
         require(skinColor.matches("[a-fA-F0-9]{6}".toRegex())) { "skinColor must match [a-fA-F0-9]{6}" }
     }
 }
+
+data class RoundStub(
+    val topic: String
+)
+
+data class PagedResult<T>(
+    val items: List<T>,
+    val page: Int,
+    val pageSize: Int,
+    val totalPages: Int
+) {
+    constructor(page: Page<T>): this(
+        page.content,
+        page.pageable.pageNumber,
+        page.pageable.pageSize,
+        page.totalPages
+    )
+}
+
+// Info
+
+data class ApplicationInfo(
+    val socketIO: SocketIOInfo
+)
+
+data class SocketIOInfo(
+    val host: String,
+    val port: Int
+)

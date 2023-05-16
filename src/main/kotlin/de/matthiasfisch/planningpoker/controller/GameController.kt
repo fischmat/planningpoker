@@ -2,13 +2,17 @@ package de.matthiasfisch.planningpoker.controller
 
 import de.matthiasfisch.planningpoker.model.*
 import de.matthiasfisch.planningpoker.service.GameService
+import de.matthiasfisch.planningpoker.service.PlayerService
+import de.matthiasfisch.planningpoker.service.RoundService
 import org.springframework.data.domain.Pageable
 import org.springframework.web.bind.annotation.*
 
 @RestController
 @RequestMapping("api/v1/games")
 class GameController(
-    private val gameService: GameService
+    private val gameService: GameService,
+    private val playerService: PlayerService,
+    private val roundService: RoundService
 ) {
 
     @GetMapping
@@ -31,23 +35,28 @@ class GameController(
         return gameService.createGame(stub)
     }
 
+    @GetMapping("/{gameId}/rounds")
+    fun getRounds(@PathVariable("gameId") gameId: String): List<Round> {
+        return roundService.getRounds(gameId)
+    }
+
     @PostMapping("/{gameId}/rounds")
-    fun startRound(@PathVariable("gameId") gameId: String, @RequestBody stub: RoundStub): List<Round> {
-        return gameService.startRound(gameId, stub).rounds
+    fun startRound(@PathVariable("gameId") gameId: String, @RequestBody stub: RoundStub): Round {
+        return roundService.startRound(gameId, stub)
     }
 
     @DeleteMapping("/{gameId}/rounds/{roundId}")
     fun endRound(@PathVariable("gameId") gameId: String, @PathVariable("roundId") roundId: String): Round {
-        return gameService.endRound(gameId, roundId)
+        return roundService.endRound(gameId, roundId)
     }
 
     @PostMapping("/{gameId}/players")
-    fun joinGame(@PathVariable("gameId") gameId: String): List<Player> {
-        return gameService.joinGame(gameId).players
+    fun joinGame(@PathVariable("gameId") gameId: String): Player {
+        return playerService.joinGame(gameId)
     }
 
     @DeleteMapping("/{gameId}/players")
-    fun leaveGame(@PathVariable("gameId") gameId: String): List<Player> {
-        return gameService.leaveGame(gameId).players
+    fun leaveGame(@PathVariable("gameId") gameId: String): Player {
+        return playerService.leaveGame(gameId)
     }
 }

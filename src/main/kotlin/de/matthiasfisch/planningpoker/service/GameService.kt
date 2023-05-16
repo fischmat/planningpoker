@@ -1,22 +1,21 @@
 package de.matthiasfisch.planningpoker.service
 
 import de.matthiasfisch.planningpoker.model.*
-import de.matthiasfisch.planningpoker.util.conflict
-import de.matthiasfisch.planningpoker.util.forbidden
 import de.matthiasfisch.planningpoker.util.notFoundError
+import mu.KotlinLogging
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.time.Instant
-import kotlin.math.pow
-import kotlin.math.sqrt
+
+private val LOGGER = KotlinLogging.logger {}
 
 @Service
 @Transactional
 class GameService(
     private val playerService: PlayerService,
-    private val gameRepo: GameRepository
+    private val gameRepo: GameRepository,
+    private val passwordHashing: PasswordHashingService
 ) {
     fun getPagedGames(pageable: Pageable): Page<Game> {
         return gameRepo.findAll(pageable)
@@ -27,102 +26,82 @@ class GameService(
     }
 
     fun createGame(stub: GameStub): Game {
-        val player = playerService.getPlayer()
         return gameRepo.save(
             with(stub) {
                 Game(
                     name = name,
-                    password = password,
-                    playableCards = playableCards,
-                    players = mutableListOf(player),
-                    rounds = mutableListOf()
+                    passwordHash = password?.let { passwordHashing.encodePlaintext(it) },
+                    playableCards = playableCards
                 )
             }
-        )
-    }
-
-    fun startRound(id: String, stub: RoundStub): Game {
-        val game = getGame(id)
-        getOngoingRound(game)?.run {
-            throw conflict("Round with ID $id is still ongoing.")
+        ).also {
+            if (playerService.isPlayerSession()) {
+                playerService.joinGame(it.id!!)
+            }
         }
-        checkPlayerIsInGame(game)
-
-        // Add new round
-        game.rounds += Round(
-            topic = stub.topic
-        )
-        return gameRepo.save(game)
     }
+}
 
-    fun endRound(gameId: String, roundId: String): Round {
-        val game = getGame(gameId)
-        val ongoingRound = getOngoingRound(game)
-            ?: throw notFoundError("Round with ID $roundId does not exist in game $gameId.")
-        checkPlayerIsInGame(game)
+@Service
+class GameEventService(
+    private val eventService: EventService,
+    private val gameRepository: GameRepository,
+    private val passwordHashingService: PasswordHashingService
+) {
+    private val roomPrefix = "games/"
 
-        game.rounds.remove(ongoingRound)
-        game.rounds += ongoingRound.copy(
-            ended = Instant.now(),
-            statistics = computeRoundResults(ongoingRound)
-        )
-        return gameRepo.save(game).rounds.first { it.id == ongoingRound.id }
-    }
+    init {
+        eventService.addListener(EnterGameCommand.EVENT_NAME, EnterGameCommand::class.java) { client, event, _ ->
+            val game = gameRepository.findById(event.gameId)
+            if (game.isEmpty) {
+                LOGGER.debug { "Client (${client.remoteAddress}) tried to join non-existing game '${event.gameId}'." }
+                client.sendEvent(ErrorEvent.EVENT_NAME, ErrorEvent("Game with ID '${event.gameId}' does not exist."))
+                return@addListener
+            }
 
-    fun joinGame(id: String): Game {
-        val player = playerService.getPlayer()
-        val game = getGame(id)
-        // If player already in the game, there is nothing to do
-        if (isPlayerInGame(player, game)) {
-            return game
-        }
-        game.players += player
-        return gameRepo.save(game)
-    }
+            val expectedPasswordHash = game.get().passwordHash
+            if (expectedPasswordHash != null
+                && (event.passwordHash == null || !passwordHashingService.intermediateMatches(event.passwordHash, expectedPasswordHash))
+            ) {
+                LOGGER.info { "Rejected client (${client.remoteAddress}) from joining game '${event.gameId}': Wrong password" }
+                client.sendEvent(ErrorEvent.EVENT_NAME, ErrorEvent("Provided password is wrong."))
+                return@addListener
+            }
 
-    fun leaveGame(id: String): Game {
-        val player = playerService.getPlayer()
-        val game = getGame(id)
-
-        if (!isPlayerInGame(player, game)) {
-            throw notFoundError("Player ${player.id} did not join game ${game.id}.")
+            val room = gameRoom(event.gameId)
+            client.joinRoom(room)
+            client.sendEvent(GameEnteredEvent.EVENT_NAME, GameEnteredEvent(event.gameId, room))
+            LOGGER.debug { "Client (${client.remoteAddress}) subscribed for events from game '${event.gameId}'." }
         }
 
-        game.players.remove(player)
-        return gameRepo.save(game)
-    }
-
-    private fun getOngoingRound(game: Game): Round? {
-        val unfinishedRounds = game.rounds.filter { !it.isFinished() }
-        check(unfinishedRounds.size <= 1) { "There must be at most one unfinished round in game ${game.id}, but there are ${unfinishedRounds.size}." }
-        return unfinishedRounds.firstOrNull()
-    }
-
-    private fun checkPlayerIsInGame(game: Game) {
-        val player = playerService.getPlayer()
-        if(!isPlayerInGame(player, game)) {
-            throw forbidden("Player with ID '${player.id}' is not part of game '${game.id}'")
+        eventService.addListener(LeaveGameCommand.EVENT_NAME, LeaveGameCommand::class.java) { client, event, _ ->
+            client.leaveRoom(gameRoom(event.gameId))
         }
     }
 
-    private fun isPlayerInGame(player: Player, game: Game): Boolean {
-        return game.players.any { it.id == player.id }
+    fun notifyPlayerJoined(gameId: String, player: Player) =
+        broadcast(gameId, PlayerJoinedEvent.EVENT_NAME, PlayerJoinedEvent(gameId, player))
+
+    fun notifyPlayerLeft(gameId: String, player: Player) =
+        broadcast(gameId, PlayerLeftEvent.EVENT_NAME, PlayerLeftEvent(gameId, player))
+
+    fun notifyPlayerRoundStarted(gameId: String, round: Round) =
+        broadcast(gameId, RoundStartedEvent.EVENT_NAME, RoundStartedEvent(gameId, round))
+
+    fun notifyPlayerRoundEnded(gameId: String, round: Round) =
+        broadcast(gameId, RoundEndedEvent.EVENT_NAME, RoundEndedEvent(gameId, round))
+
+    fun notifyPlayerVoteSubmitted(gameId: String, round: Round, vote: Vote) =
+        broadcast(gameId, VoteSubmittedEvent.EVENT_NAME, VoteSubmittedEvent(gameId, round, vote))
+
+    fun notifyPlayerVoteRevoked(gameId: String, round: Round, vote: Vote) =
+        broadcast(gameId, VoteRevokedEvent.EVENT_NAME, VoteRevokedEvent(gameId, round, vote))
+
+    private fun broadcast(gameId: String, eventName: String, event: Event) {
+        val room = gameRoom(gameId)
+        LOGGER.debug { "Broadcasting event '$eventName' to room $room: $event" }
+        eventService.broadcastToRoom(room, eventName, event)
     }
 
-    private fun computeRoundResults(round: Round) = with(round) {
-        val minVote = votes.minOfOrNull { it.card.value }
-        val maxVote = votes.maxOfOrNull { it.card.value }
-        val average = votes.map { it.card.value }.average().takeIf { !it.isNaN() }
-        val variance = average?.let { avg ->
-            sqrt(votes.map { (it.card.value - avg).pow(2.0) }.average())
-        }?.takeIf { !it.isNaN() }
-
-        RoundResults(
-            votes = votes,
-            minVotes = votes.filter { it.card.value == minVote },
-            maxVotes = votes.filter { it.card.value == maxVote },
-            averageVote = average,
-            variance = variance
-        )
-    }
+    private fun gameRoom(gameId: String) = roomPrefix + gameId
 }
