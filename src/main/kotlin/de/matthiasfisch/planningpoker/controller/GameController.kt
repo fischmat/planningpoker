@@ -59,4 +59,14 @@ class GameController(
     fun leaveGame(@PathVariable("gameId") gameId: String): Player {
         return playerService.leaveGame(gameId)
     }
+
+    @PostMapping("/{gameId}/rounds/{roundId}/votes")
+    fun submitVote(@PathVariable("roundId") roundId: String, @RequestBody card: Card): Vote {
+        return roundService.putVote(roundId, card)
+    }
+
+    @DeleteMapping("/{gameId}/rounds/{roundId}/votes/mine")
+    fun revokeVote(@PathVariable("roundId") roundId: String) {
+        roundService.revokeVote(roundId)
+    }
 }

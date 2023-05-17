@@ -27,12 +27,21 @@ class PlayerService(
 
     fun isPlayerSession() = currentPlayerId() != null
 
-    fun getOrCreatePlayer(stub: PlayerStub): Player {
+    fun updatePlayer(stub: PlayerStub): Player {
+        val player = getPlayer()
+        return playerRepository.save(
+            player.copy(
+                name = stub.name,
+                avatar = stub.avatar
+            )
+        )
+    }
+
+    fun getOrUpdatePlayer(stub: PlayerStub): Player {
         val playerId = currentPlayerId()
 
         return if (playerId != null) {
-            playerRepository.findById(playerId)
-                .orElseThrow { notFoundError("Player $playerId does not exist") }
+            updatePlayer(stub)
         } else {
             playerRepository.save(
                 Player(

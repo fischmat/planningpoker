@@ -1,5 +1,6 @@
 package de.matthiasfisch.planningpoker.controller
 
+import de.matthiasfisch.planningpoker.model.AvatarProps
 import de.matthiasfisch.planningpoker.model.Player
 import de.matthiasfisch.planningpoker.model.PlayerStub
 import de.matthiasfisch.planningpoker.service.AvatarService
@@ -14,11 +15,14 @@ class PlayerController(
     private val playerService: PlayerService,
     private val avatarService: AvatarService
 ) {
+    @GetMapping("/me")
+    fun getCurrentPlayer(): Player = playerService.getPlayer()
+
     @GetMapping("/{id}")
     fun getPlayer(@PathVariable("id") id: String): Player = playerService.getPlayer(id)
 
     @PostMapping
-    fun createOrUpdatePlayer(@RequestBody stub: PlayerStub): Player = playerService.getOrCreatePlayer(stub)
+    fun createOrUpdatePlayer(@RequestBody stub: PlayerStub): Player = playerService.getOrUpdatePlayer(stub)
 
     @GetMapping("/{id}/avatar")
     fun getAvatar(@PathVariable("id") id: String): ResponseEntity<*> {
@@ -29,5 +33,18 @@ class PlayerController(
         return ResponseEntity.ok()
             .contentType(MediaType.parseMediaType("image/svg+xml"))
             .body(avatar)
+    }
+
+    @GetMapping("/avatar/preview")
+    fun getAvatarPreview(avatarProps: AvatarProps): ResponseEntity<*> {
+        val avatar = avatarService.getAvatar(avatarProps)
+        return ResponseEntity.ok()
+            .contentType(MediaType.parseMediaType("image/svg+xml"))
+            .body(avatar)
+    }
+
+    @PatchMapping("/me")
+    fun updatePlayer(@RequestBody stub: PlayerStub): Player {
+        return playerService.updatePlayer(stub)
     }
 }
