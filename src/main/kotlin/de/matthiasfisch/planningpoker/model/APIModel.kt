@@ -27,7 +27,7 @@ data class AvatarProps(
     val skinColor: String
 ) {
     init {
-        require(backgroundColor.matches("[a-fA-F0-9]{6}".toRegex())) { "backgroundColor must match [a-fA-F0-9]{6}" }
+        require(backgroundColor == "transparent" || backgroundColor.matches("[a-fA-F0-9]{6}".toRegex())) { "backgroundColor must match [a-fA-F0-9]{6}" }
         require(earrings == null || earrings in 1..6) { "earrings out of range." }
         require(eyebrows in 1..15) { "eyebrows out of range." }
         require(eyes in 1..26) { "eyes out of range." }
