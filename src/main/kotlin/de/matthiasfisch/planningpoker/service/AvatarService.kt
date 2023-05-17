@@ -53,8 +53,12 @@ class AvatarService(
         request = request.query("eyes", variant(avatar.eyes))
 
         // features
-        request = request.query("features", avatar.features.joinToString(","))
-        request = request.query("featuresProbability", if(avatar.features.isNotEmpty()) "100" else "0")
+        if (avatar.features.isNotEmpty()) {
+            request = request.query("features", avatar.features.joinToString(","))
+            request = request.query("featuresProbability", "100")
+        } else {
+            request = request.query("featuresProbability", "0")
+        }
 
         // mouth
         request = request.query("mouth", variant(avatar.mouth))
