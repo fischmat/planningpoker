@@ -12,6 +12,8 @@ security:
     salt-length: 16
     iterations: 31000
     algorithm: PBKDF2WithHmacSHA256
+  enforce-https:
+    password-transfer: true
 
 websockets:
   # Hostname to listen at. Leave empty for 0.0.0.0 or ::0.

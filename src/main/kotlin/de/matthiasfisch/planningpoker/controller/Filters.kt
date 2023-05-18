@@ -5,6 +5,7 @@ import de.matthiasfisch.planningpoker.service.PasswordHashingService
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpHeaders
 import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
@@ -13,7 +14,8 @@ import java.lang.IllegalStateException
 @Component
 class GameAuthFilter(
     private val gameRepository: GameRepository,
-    private val passwordHashing: PasswordHashingService
+    private val passwordHashing: PasswordHashingService,
+    @Value("\${security.enforce-https.password-transfer}") private val enforceHttps: Boolean
 ) : OncePerRequestFilter() {
     private val protectedPathRegex = ".*/api/v[0-9]+/games/(.*?)/players$".toRegex()
 
@@ -23,7 +25,7 @@ class GameAuthFilter(
         filterChain: FilterChain
     ) {
         // Only allow via HTTPS
-        if (request.scheme.lowercase() != "https") {
+        if (enforceHttps && request.scheme.lowercase() != "https") {
             response.status = 426
             response.addHeader(HttpHeaders.UPGRADE, "HTTPS")
             return
