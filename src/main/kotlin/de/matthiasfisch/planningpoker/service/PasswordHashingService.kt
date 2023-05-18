@@ -1,12 +1,10 @@
 package de.matthiasfisch.planningpoker.service
 
+import org.apache.commons.codec.digest.DigestUtils
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.security.crypto.password.Pbkdf2PasswordEncoder
 import org.springframework.security.crypto.password.Pbkdf2PasswordEncoder.SecretKeyFactoryAlgorithm
 import org.springframework.stereotype.Service
-import java.nio.charset.StandardCharsets
-import java.security.MessageDigest
-import java.util.Base64
 
 @Service
 class PasswordHashingService(
@@ -33,10 +31,7 @@ class PasswordHashingService(
      */
     fun encodeItermediate(intermediate: String) = encoder.encode(intermediate)
 
-    fun createIntermediate(plaintext: String): String = MessageDigest.getInstance("SHA-512")
-        .digest(plaintext.toByteArray(StandardCharsets.UTF_8))
-        .let { Base64.getEncoder().encode(it) }
-        .toString(StandardCharsets.UTF_8)
+    fun createIntermediate(plaintext: String): String = DigestUtils.sha512Hex(plaintext)
 
     fun intermediateMatches(intermediate: String, encodedPassword: String) = encoder.matches(intermediate, encodedPassword)
 }
