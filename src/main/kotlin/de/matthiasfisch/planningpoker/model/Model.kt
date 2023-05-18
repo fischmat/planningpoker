@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import org.springframework.data.annotation.Id
 import org.springframework.data.mongodb.core.mapping.Document
 import org.springframework.data.mongodb.repository.MongoRepository
+import org.springframework.data.mongodb.repository.Query
 import java.time.Instant
 
 @Document("players")
@@ -77,7 +78,10 @@ data class Vote(
 
 interface GameRepository: MongoRepository<Game, String>
 
-interface PlayerRepository: MongoRepository<Player, String>
+interface PlayerRepository: MongoRepository<Player, String> {
+    @Query(value = "{ 'gameIds': { \$all: [?0] } }")
+    fun findByGameId(gameId: String): List<Player>
+}
 
 interface RoundRepository: MongoRepository<Round, String> {
     fun findByGameId(gameId: String): List<Round>

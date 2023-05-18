@@ -30,6 +30,11 @@ class GameController(
         return gameService.getGame(gameId)
     }
 
+    @GetMapping("/{gameId}/players")
+    fun getPlayers(@PathVariable("gameId") gameId: String): List<Player> {
+        return playerService.getPlayersInGame(gameId)
+    }
+
     @PostMapping
     fun createGame(@RequestBody stub: GameStub): Game {
         return gameService.createGame(stub)

@@ -77,5 +77,9 @@ class PlayerService(
         }
     }
 
+    fun getPlayersInGame(gameId: String): List<Player> {
+        return playerRepository.findByGameId(gameId)
+    }
+
     private fun currentPlayerId() = session.getAttribute(SESSION_PLAYER_ID_ATTR).let { it as? String }
 }
