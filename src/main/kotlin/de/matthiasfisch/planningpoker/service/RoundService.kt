@@ -122,7 +122,7 @@ class RoundService(
         val suggestedCard = if (average != null) {
             gameService.getGame(round.gameId)
                 .playableCards
-                .filter { it.value > average }
+                .filter { it.value >= average }
                 .minByOrNull { it.value }
         } else {
             null
