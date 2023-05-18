@@ -1,6 +1,7 @@
 package de.matthiasfisch.planningpoker.service
 
 import de.matthiasfisch.planningpoker.model.*
+import de.matthiasfisch.planningpoker.util.forbidden
 import de.matthiasfisch.planningpoker.util.notFoundError
 import mu.KotlinLogging
 import org.springframework.data.domain.Page
@@ -39,6 +40,15 @@ class GameService(
                 playerService.joinGame(it.id!!)
             }
         }
+    }
+
+    fun getPlayersInGame(gameId: String): List<Player> {
+        val game = getGame(gameId)
+        val player = playerService.getPlayer()
+        if (player.gameIds.none { it == game.id }) {
+            throw forbidden("Player did not join game $gameId")
+        }
+        return playerService.getPlayersInGame(gameId)
     }
 }
 

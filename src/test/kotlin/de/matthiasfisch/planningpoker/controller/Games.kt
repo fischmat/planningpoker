@@ -80,6 +80,19 @@ object Games {
             .extract()
             .`as`(Player::class.java)
 
+    fun getPlayersInGameResponse(gameId: String, sessionId: String?): Response =
+        RestAssured.given()
+            .addSessionId(sessionId)
+            .`when`()
+            .request(Method.GET, "/v1/games/{gameId}/players", gameId)
+
+    fun getPlayersInGame(gameId: String, sessionId: String?): List<Map<String, String>> =
+        getPlayersInGameResponse(gameId, sessionId)
+            .then()
+            .statusCode(200)
+            .extract()
+            .`as`(List::class.java) as List<Map<String, String>>
+
     fun getRoundsResponse(gameId: String, sessionId: String?): Response =
         RestAssured.given()
             .addSessionId(sessionId)
@@ -92,6 +105,19 @@ object Games {
             .statusCode(200)
             .extract()
             .`as`(List::class.java) as List<Map<String, String>>
+
+    fun getCurrentRoundResponse(gameId: String, sessionId: String?): Response =
+        RestAssured.given()
+            .addSessionId(sessionId)
+            .`when`()
+            .request(Method.GET, "/v1/games/{gameId}/rounds/current", gameId)
+
+    fun getCurrentRound(gameId: String, sessionId: String?): Round =
+        getCurrentRoundResponse(gameId, sessionId)
+            .then()
+            .statusCode(200)
+            .extract()
+            .`as`(Round::class.java)
 
     fun startRoundResponse(gameId: String, stub: RoundStub, sessionId: String?): Response =
         RestAssured.given()

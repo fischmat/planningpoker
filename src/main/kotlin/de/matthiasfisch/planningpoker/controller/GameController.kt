@@ -32,7 +32,7 @@ class GameController(
 
     @GetMapping("/{gameId}/players")
     fun getPlayers(@PathVariable("gameId") gameId: String): List<Player> {
-        return playerService.getPlayersInGame(gameId)
+        return gameService.getPlayersInGame(gameId)
     }
 
     @PostMapping

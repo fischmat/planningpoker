@@ -16,7 +16,7 @@ import io.kotest.matchers.date.shouldBeBefore
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import org.hamcrest.Matchers
+import org.hamcrest.Matchers.containsString
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
@@ -60,7 +60,7 @@ class RoundsIT(
     }
 
     init {
-        context("GET /v1/games/{gameId}/rounds") {
+        context("GET /v1/games/{gameId}/rounds - Get all rounds") {
             val (player, sessionId) = Players.createPlayerSession()
             val game = createGame(
                 name = "some-game",
@@ -99,11 +99,11 @@ class RoundsIT(
                 Api.games.getRoundsResponse("non-existing", sessionId)
                     .then()
                     .statusCode(404)
-                    .body(Matchers.containsString("Game with ID non-existing does not exist"))
+                    .body(containsString("Game with ID non-existing does not exist"))
             }
         }
 
-        context("POST /v1/games/{gameId}/rounds") {
+        context("POST /v1/games/{gameId}/rounds - Start new round") {
             val (player, sessionId) = Players.createPlayerSession()
 
             test("Start round -> 200") {
@@ -154,7 +154,7 @@ class RoundsIT(
                 Api.games.startRoundResponse("not-existing", stub, sessionId)
                     .then()
                     .statusCode(404)
-                    .body(Matchers.containsString("Game with ID not-existing does not exist"))
+                    .body(containsString("Game with ID not-existing does not exist"))
             }
 
             test("Start round without session -> 401") {
@@ -183,7 +183,7 @@ class RoundsIT(
                 Api.games.startRoundResponse(game.id!!, stub, sessionId = otherSessionId)
                     .then()
                     .statusCode(403)
-                    .body(Matchers.containsString("Player with ID '${otherPlayer.id}' is not part of game '${game.id}'"))
+                    .body(containsString("Player with ID '${otherPlayer.id}' is not part of game '${game.id}'"))
             }
 
             test("Start round while one still ongoing -> 409") {
@@ -195,11 +195,80 @@ class RoundsIT(
                 Api.games.startRoundResponse(game.id!!, RoundStub("Second Round"), sessionId)
                     .then()
                     .statusCode(409)
-                    .body(Matchers.containsString("is still ongoing."))
+                    .body(containsString("is still ongoing."))
             }
         }
 
-        context("DELETE /api/v1/games/{gameId}/rounds/{roundId}") {
+        context("GET /v1/games/{gameId}/rounds/current - Get current round") {
+            val (player, sessionId) = Players.createPlayerSession()
+
+            test("Get for game with ongoing round -> 200") {
+                // Arrange
+                val game = createGame("some-game", null, listOf(1, 2, 3), listOf(player))
+                Api.games.joinGame(game.id!!, sessionId, null)
+                val round1 = Api.games.startRound(game.id!!, RoundStub("Round 1"), sessionId)
+                Api.games.endRound(game.id!!, round1.id!!, sessionId)
+                val round2 = Api.games.startRound(game.id!!, RoundStub("Round 2"), sessionId)
+
+                // Act
+                val currentRound = Api.games.getCurrentRound(game.id!!, sessionId)
+
+                // Assert
+                currentRound.id shouldBe round2.id
+                currentRound.topic shouldBe round2.topic
+                currentRound.isFinished() shouldBe false
+            }
+
+            test("Get for game with only finished rounds -> 404") {
+                // Arrange
+                val game = createGame("some-game", null, listOf(1, 2, 3), listOf(player))
+                Api.games.joinGame(game.id!!, sessionId, null)
+                val round = Api.games.startRound(game.id!!, RoundStub("Round 1"), sessionId)
+                Api.games.endRound(game.id!!, round.id!!, sessionId)
+
+                // Act + Assert
+                Api.games.getCurrentRoundResponse(game.id!!, sessionId)
+                    .then()
+                    .statusCode(404)
+                    .body(containsString("No round is currently ongoing"))
+            }
+
+            test("Get for game without rounds -> 404") {
+                // Arrange
+                val game = createGame("some-game", null, listOf(1, 2, 3), listOf(player))
+                Api.games.joinGame(game.id!!, sessionId, null)
+
+                // Act + Assert
+                Api.games.getCurrentRoundResponse(game.id!!, sessionId)
+                    .then()
+                    .statusCode(404)
+                    .body(containsString("No round is currently ongoing"))
+            }
+
+            test("Get for non-existing game -> 404") {
+                // Arrange
+
+                // Act + Assert
+                Api.games.getCurrentRoundResponse("non-existing", sessionId)
+                    .then()
+                    .statusCode(404)
+                    .body(containsString("Game with ID non-existing does not exist"))
+            }
+
+            test("Get for game the player did not join -> 403") {
+                // Arrange
+                val game = createGame("some-game", null, listOf(1, 2, 3), listOf(player))
+                val (otherPlayer, otherSessionId) = Players.createPlayerSession()
+
+                // Act + Assert
+                Api.games.getCurrentRoundResponse(game.id!!, otherSessionId)
+                    .then()
+                    .statusCode(403)
+                    .body(containsString("Player with ID '${otherPlayer.id}' is not part of game '${game.id}'"))
+            }
+        }
+
+        context("DELETE /api/v1/games/{gameId}/rounds/{roundId} - End current round") {
             val (player, sessionId) = Players.createPlayerSession()
 
             test("End round without votes -> 200") {
@@ -299,7 +368,7 @@ class RoundsIT(
                 Api.games.endRoundResponse("not-existing", "not-existing", sessionId)
                     .then()
                     .statusCode(404)
-                    .body(Matchers.containsString("Game with ID not-existing does not exist"))
+                    .body(containsString("Game with ID not-existing does not exist"))
             }
 
             test("End non-existing round -> 404") {
@@ -315,7 +384,7 @@ class RoundsIT(
                 Api.games.endRoundResponse(game.id!!, "not-existing", sessionId)
                     .then()
                     .statusCode(404)
-                    .body(Matchers.containsString("Round with ID not-existing does not exist"))
+                    .body(containsString("Round with ID not-existing does not exist"))
             }
 
             test("End round of game where player did not join -> 400") {
@@ -333,7 +402,7 @@ class RoundsIT(
                 Api.games.endRoundResponse(game.id!!, round.id!!, otherSessionId)
                     .then()
                     .statusCode(403)
-                    .body(Matchers.containsString("Player with ID '${otherPlayer.id}' is not part of game '${game.id}'"))
+                    .body(containsString("Player with ID '${otherPlayer.id}' is not part of game '${game.id}'"))
             }
 
             test("End round that was already ended -> 400") {
@@ -351,7 +420,7 @@ class RoundsIT(
                 Api.games.endRoundResponse(game.id!!, round.id!!, sessionId)
                     .then()
                     .statusCode(400)
-                    .body(Matchers.containsString("Round with ID '${round.id}' is already finished."))
+                    .body(containsString("Round with ID '${round.id}' is already finished."))
             }
         }
     }

@@ -51,7 +51,7 @@ class GamesIT(
     }
 
     init {
-        context("GET /v1/games") {
+        context("GET /v1/games - Get games paginated") {
             test("Get games and no games exist -> 200") {
                 // Arrange
                 val expectedPage = PagedResult<Game>(
@@ -101,7 +101,7 @@ class GamesIT(
             }
         }
 
-        context("GET /v1/games/{gameId}") {
+        context("GET /v1/games/{gameId} - Get game by ID") {
             test("Get game without password -> 200") {
                 // Arrange
                 val game = createGame("test", null, listOf(1, 2, 3))
@@ -136,7 +136,7 @@ class GamesIT(
             }
         }
 
-        context("POST /v1/games") {
+        context("POST /v1/games - Create new game") {
             val (_, sessionId) = createPlayerSession()
 
             test("Create game without password -> 200") {
@@ -257,7 +257,44 @@ class GamesIT(
             }
         }
 
-        context("POST /api/v1/games/{gameId}/players") {
+        context("GET /v1/games/{gameId}/players - Get players in game") {
+            val (player, sessionId) = createPlayerSession()
+
+            test("Get for game active game -> 200") {
+                // Arrange
+                val game = createGame("test", null, listOf(1, 2, 3))
+                Api.games.joinGame(game.id!!, sessionId, null)
+
+                // Act
+                val players = Api.games.getPlayersInGame(game.id!!, sessionId)
+
+                // Assert
+                players.map { it["id"].toString() } shouldBe listOf(player.id)
+            }
+
+            test("Get for non-existing game -> 404") {
+                // Arrange
+
+                // Act + Assert
+                Api.games.getPlayersInGameResponse("non-existing", sessionId)
+                    .then()
+                    .statusCode(404)
+                    .body(containsString("Game with ID non-existing does not exist"))
+            }
+
+            test("Get for game the player did not join -> 403") {
+                // Arrange
+                val game = createGame("test", null, listOf(1, 2, 3))
+
+                // Act + Assert
+                Api.games.getPlayersInGameResponse(game.id!!, sessionId)
+                    .then()
+                    .statusCode(403)
+                    .body(containsString("Player did not join game ${game.id}"))
+            }
+        }
+
+        context("POST /api/v1/games/{gameId}/players - Join a game") {
             test("Join unprotected game -> 200") {
                 // Arrange
                 val game = createGame("test", null, listOf(1, 2, 3))
