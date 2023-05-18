@@ -30,6 +30,12 @@ class RoundService(
         return roundRepository.findByGameId(gameId)
     }
 
+    fun getCurrentRound(gameId: String): Round {
+        return getRounds(gameId)
+            .singleOrNull { !it.isFinished() }
+            ?: throw notFoundError("No round is currently ongoing.")
+    }
+
     fun startRound(gameId: String, stub: RoundStub): Round {
         gameService.getGame(gameId) // Check game exists
         val ongoingRound = getOngoingRound(gameId)

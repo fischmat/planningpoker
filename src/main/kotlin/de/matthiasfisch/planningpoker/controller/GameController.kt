@@ -45,6 +45,11 @@ class GameController(
         return roundService.getRounds(gameId)
     }
 
+    @GetMapping("/{gameId}/rounds/current")
+    fun getCurrentRound(@PathVariable("gameId") gameId: String): Round {
+        return roundService.getCurrentRound(gameId)
+    }
+
     @PostMapping("/{gameId}/rounds")
     fun startRound(@PathVariable("gameId") gameId: String, @RequestBody stub: RoundStub): Round {
         return roundService.startRound(gameId, stub)
