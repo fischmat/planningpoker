@@ -3,6 +3,10 @@ package de.matthiasfisch.planningpoker.service
 import com.corundumstudio.socketio.Configuration
 import com.corundumstudio.socketio.SocketIOServer
 import com.corundumstudio.socketio.listener.DataListener
+import com.corundumstudio.socketio.protocol.JacksonJsonSupport
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
+import com.fasterxml.jackson.module.kotlin.KotlinFeature
+import com.fasterxml.jackson.module.kotlin.KotlinModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import de.matthiasfisch.planningpoker.model.Event
 import jakarta.annotation.PreDestroy
@@ -24,12 +28,22 @@ class EventService(
     private val server: SocketIOServer
     private val objectMapper = jacksonObjectMapper()
 
+    private val kotlinModule = KotlinModule.Builder()
+        .withReflectionCacheSize(512)
+        .configure(KotlinFeature.NullToEmptyCollection, false)
+        .configure(KotlinFeature.NullToEmptyMap, false)
+        .configure(KotlinFeature.NullIsSameAsDefault, false)
+        .configure(KotlinFeature.SingletonSupport, false)
+        .configure(KotlinFeature.StrictNullChecks, false)
+        .build()
+
     init {
         val config = Configuration().apply {
             if (bindAddress.isNotBlank()) {
                 hostname = bindAddress
             }
             port = bindPort
+            jsonSupport = JacksonJsonSupport(JavaTimeModule(), kotlinModule)
             allowedOrigin?.let { origin = it }
         }
         server = SocketIOServer(config)
