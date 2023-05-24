@@ -112,7 +112,7 @@ class RoundService(
     }
 
     private fun computeRoundResults(round: Round): RoundResults {
-        val votes = voteRepository.findByRoundId(round.id!!)
+        val votes = getVotes(round.id!!)
         val minVote = votes.minOfOrNull { it.card.value }
         val maxVote = votes.maxOfOrNull { it.card.value }
         val average = votes.map { it.card.value }.average().takeIf { !it.isNaN() }
