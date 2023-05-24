@@ -4,15 +4,21 @@ import de.matthiasfisch.planningpoker.model.*
 import de.matthiasfisch.planningpoker.service.GameService
 import de.matthiasfisch.planningpoker.service.PlayerService
 import de.matthiasfisch.planningpoker.service.RoundService
+import de.matthiasfisch.planningpoker.service.StorageService
+import jakarta.servlet.http.HttpServletResponse
+import org.apache.commons.compress.utils.IOUtils
 import org.springframework.data.domain.Pageable
+import org.springframework.http.HttpHeaders
 import org.springframework.web.bind.annotation.*
+import org.springframework.web.multipart.MultipartFile
 
 @RestController
 @RequestMapping("api/v1/games")
 class GameController(
     private val gameService: GameService,
     private val playerService: PlayerService,
-    private val roundService: RoundService
+    private val roundService: RoundService,
+    private val storageService: StorageService
 ) {
 
     @GetMapping
@@ -84,5 +90,11 @@ class GameController(
     @DeleteMapping("/{gameId}/rounds/{roundId}/votes/mine")
     fun revokeVote(@PathVariable("roundId") roundId: String) {
         roundService.revokeVote(roundId)
+    }
+
+    @GetMapping("/{gameId}/rounds/{roundId}/results")
+    fun getRoundResults(@PathVariable("gameId") gameId: String, @PathVariable("roundId") roundId: String): RoundResults {
+        require(roundService.getRound(roundId).gameId == gameId) { "Round $roundId does not belong to game $gameId." }
+        return roundService.getRoundResults(roundId)
     }
 }

@@ -73,6 +73,12 @@ class RoundService(
         }
     }
 
+    fun getVotes(roundId: String): List<Vote> {
+        val gameId = getRound(roundId).gameId
+        checkPlayerIsInGame(gameId)
+        return voteRepository.findByRoundId(roundId)
+    }
+
     fun putVote(roundId: String, card: Card): Vote {
         val round = getRound(roundId)
         val game = gameService.getGame(round.gameId)
@@ -109,6 +115,15 @@ class RoundService(
                     gameEvents.notifyPlayerVoteRevoked(round.gameId, round, vote)
                 }
             }
+    }
+
+    fun getRoundResults(roundId: String): RoundResults {
+        val round = getRound(roundId)
+        checkPlayerIsInGame(round.gameId)
+        if (!round.isFinished()) {
+            throw conflict("Round $roundId is not ended yet.")
+        }
+        return computeRoundResults(round)
     }
 
     private fun computeRoundResults(round: Round): RoundResults {
