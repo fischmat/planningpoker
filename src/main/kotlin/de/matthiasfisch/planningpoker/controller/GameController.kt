@@ -4,21 +4,15 @@ import de.matthiasfisch.planningpoker.model.*
 import de.matthiasfisch.planningpoker.service.GameService
 import de.matthiasfisch.planningpoker.service.PlayerService
 import de.matthiasfisch.planningpoker.service.RoundService
-import de.matthiasfisch.planningpoker.service.StorageService
-import jakarta.servlet.http.HttpServletResponse
-import org.apache.commons.compress.utils.IOUtils
 import org.springframework.data.domain.Pageable
-import org.springframework.http.HttpHeaders
 import org.springframework.web.bind.annotation.*
-import org.springframework.web.multipart.MultipartFile
 
 @RestController
 @RequestMapping("api/v1/games")
 class GameController(
     private val gameService: GameService,
     private val playerService: PlayerService,
-    private val roundService: RoundService,
-    private val storageService: StorageService
+    private val roundService: RoundService
 ) {
 
     @GetMapping
