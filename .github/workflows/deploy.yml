@@ -24,3 +24,5 @@ jobs:
           DOCKER_SECRET: ${{ secrets.DOCKER_PASSWORD }}
         run: docker login -u github -p "$DOCKER_SECRET" docker.matthias-fisch.de
       - run: docker push "docker.matthias-fisch.de/poker-server:$VERSION"
+      - run: docker tag "docker.matthias-fisch.de/poker-server:$VERSION" "docker.matthias-fisch.de/poker-server:latest"
+      - run: docker push "docker.matthias-fisch.de/poker-server:latest"
