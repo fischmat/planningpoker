@@ -26,6 +26,7 @@ dependencies {
 	implementation 'org.springframework.session:spring-session-data-mongodb'
 	implementation 'io.github.microutils:kotlin-logging-jvm:3.0.5'
 	implementation 'com.corundumstudio.socketio:netty-socketio:1.7.25'
+	implementation 'io.minio:minio:8.5.2'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 	testImplementation('org.springframework.boot:spring-boot-starter-test') {
 		// JSONObject clashes with the one from org.json:json through io.socket:socket.io-client

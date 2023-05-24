@@ -23,6 +23,14 @@ websockets:
   # The allowed origin for the websocket connection
   allowed-origin:
 
+storage:
+  s3:
+    endpoint:
+    accessKey:
+    secretKey:
+    bucket: poker
+    encryptionKey:
+
 avatars:
   dicebear:
     uri: http://localhost:3000/6.x/adventurer/svg

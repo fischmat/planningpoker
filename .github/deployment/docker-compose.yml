@@ -26,6 +26,36 @@ services:
     networks:
       - it-net
 
+  minio:
+    image: bitnami/minio:2023.5.18-debian-11-r0
+    container_name: minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: root
+      MINIO_ROOT_PASSWORD: testtesttest
+      MINIO_DEFAULT_BUCKETS: poker
+    networks:
+      - it-net
+
+  initialize-minio:
+    image: bitnami/minio-client:latest
+    restart: on-failure
+    environment:
+      MINIO_ROOT_USER: root
+      MINIO_ROOT_PASSWORD: testtesttest
+    user: 0:0
+    volumes:
+      - ./initialize-minio.sh:/initialize-minio.sh
+      - ../../src/main/resources:/out
+    depends_on:
+      - minio
+    entrypoint: [ "/initialize-minio.sh" ]
+    networks:
+      - it-net
+
   dicebear:
     image: ghcr.io/dicebear/api:latest
     ports:

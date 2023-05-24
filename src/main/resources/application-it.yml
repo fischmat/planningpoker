@@ -5,3 +5,7 @@ spring:
 
 websockets:
   port: 38081
+
+storage:
+  s3:
+    endpoint:
