@@ -69,5 +69,6 @@ data class ApplicationInfo(
 
 data class SocketIOInfo(
     val host: String,
-    val port: Int
+    val port: Int,
+    val scheme: String
 )

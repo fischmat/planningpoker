@@ -22,6 +22,10 @@ websockets:
   port: 8081
   # The allowed origin for the websocket connection
   allowed-origin:
+  # Public port for websocket connections
+  public-port: 8081
+  # Web socket protocol
+  protocol: wss
 
 avatars:
   dicebear:
