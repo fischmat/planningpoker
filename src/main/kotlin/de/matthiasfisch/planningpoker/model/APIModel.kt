@@ -60,15 +60,3 @@ data class PagedResult<T>(
         page.totalPages
     )
 }
-
-// Info
-
-data class ApplicationInfo(
-    val socketIO: SocketIOInfo
-)
-
-data class SocketIOInfo(
-    val host: String,
-    val port: Int,
-    val scheme: String
-)
