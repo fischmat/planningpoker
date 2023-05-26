@@ -70,6 +70,12 @@ class GameController(
         return playerService.leaveGame(gameId)
     }
 
+    @GetMapping("/{gameId}/rounds/{roundId}/votes")
+    fun getVotes(@PathVariable("gameId") gameId: String, @PathVariable("roundId") roundId: String): List<Vote> {
+        require(roundService.getRound(roundId).gameId == gameId) { "Round $roundId does not belong to game $gameId." }
+        return roundService.getVotes(roundId)
+    }
+
     @PostMapping("/{gameId}/rounds/{roundId}/votes")
     fun submitVote(@PathVariable("roundId") roundId: String, @RequestBody card: Card): Vote {
         return roundService.putVote(roundId, card)
@@ -78,5 +84,11 @@ class GameController(
     @DeleteMapping("/{gameId}/rounds/{roundId}/votes/mine")
     fun revokeVote(@PathVariable("roundId") roundId: String) {
         roundService.revokeVote(roundId)
+    }
+
+    @GetMapping("/{gameId}/rounds/{roundId}/results")
+    fun getRoundResults(@PathVariable("gameId") gameId: String, @PathVariable("roundId") roundId: String): RoundResults {
+        require(roundService.getRound(roundId).gameId == gameId) { "Round $roundId does not belong to game $gameId." }
+        return roundService.getRoundResults(roundId)
     }
 }
