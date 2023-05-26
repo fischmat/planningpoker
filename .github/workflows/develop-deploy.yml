@@ -2,10 +2,8 @@ name: Create release image and deploy
 run-name: Release and deploy ${{ github.ref_name }}
 on:
   push:
-    tags:
-      - 'v*'
-env:
-  VERSION: ${{ github.ref_name }}
+    branches:
+      - develop
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -18,11 +16,11 @@ jobs:
           java-version: '17'
           distribution: 'corretto'
       - run: cd ${{ github.workspace }}
-      - run: ./gradlew build -x test
-      - run: docker build -t "docker.matthias-fisch.de/poker-server:$VERSION" .
+      - run: TAG=$(./gradlew properties -q | grep "^version:" | awk '{print $2}')
+      - run: docker build -t "docker.matthias-fisch.de/poker-server:$TAG" .
       - env:
           DOCKER_SECRET: ${{ secrets.DOCKER_PASSWORD }}
         run: docker login -u github -p "$DOCKER_SECRET" docker.matthias-fisch.de
-      - run: docker push "docker.matthias-fisch.de/poker-server:$VERSION"
-      - run: docker tag "docker.matthias-fisch.de/poker-server:$VERSION" "docker.matthias-fisch.de/poker-server:latest"
+      - run: docker push "docker.matthias-fisch.de/poker-server:$TAG"
+      - run: docker tag "docker.matthias-fisch.de/poker-server:$TAG" "docker.matthias-fisch.de/poker-server:latest"
       - run: docker push "docker.matthias-fisch.de/poker-server:latest"
