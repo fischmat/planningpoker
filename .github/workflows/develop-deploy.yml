@@ -13,13 +13,15 @@ jobs:
       - run: cd ${{ github.workspace }}
       - name: Build and push images
         env:
+          DOCKER_REGISTRY: "docker.matthias-fisch.de"
+          REPOSITORY: "docker.matthias-fisch.de/poker-server"
           DOCKER_SECRET: ${{ secrets.DOCKER_PASSWORD }}
         run: |
           TAG=$(./gradlew properties -q | grep "^version:" | awk '{print $2}')
-          IMAGE_NAME="docker.matthias-fisch.de/poker-server:$TAG"
+          IMAGE_NAME="$REPOSITORY:$TAG"
           echo "Image will be available as $IMAGE_NAME."
           docker build -t "$IMAGE_NAME" .
-          docker login -u github -p "$DOCKER_SECRET" docker.matthias-fisch.de
+          docker login -u github -p "$DOCKER_SECRET" "$DOCKER_REGISTRY"
           docker push "$IMAGE_NAME"
-          docker tag "$IMAGE_NAME" "docker.matthias-fisch.de/poker-server:latest"
-          docker push "docker.matthias-fisch.de/poker-server:latest"
+          docker tag "$IMAGE_NAME" "$REPOSITORY:latest"
+          docker push "$REPOSITORY:latest"
