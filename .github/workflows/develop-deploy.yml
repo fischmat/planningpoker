@@ -1,5 +1,5 @@
 name: Create release image and deploy
-run-name: Release and deploy ${{ github.ref_name }}
+run-name: Deploy ${{ github.ref_name }}
 on:
   push:
     branches:
