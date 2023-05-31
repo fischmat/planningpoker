@@ -19,9 +19,13 @@ websockets:
   # Hostname to listen at. Leave empty for 0.0.0.0 or ::0.
   listen-address:
   # Port for listening at for websocket connections
-  port: 8081
+  listen-port: 8081
   # The allowed origin for the websocket connection
   allowed-origin:
+  # Public port for websocket connections
+  published-port: 8081
+  # Web socket protocol
+  protocol: wss
 
 storage:
   s3:

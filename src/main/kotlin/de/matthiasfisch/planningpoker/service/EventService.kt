@@ -20,7 +20,7 @@ import org.springframework.stereotype.Service
 @Service
 class EventService(
     @Value("\${websockets.listen-address}") bindAddress: String,
-    @Value("\${websockets.port}") val bindPort: Int,
+    @Value("\${websockets.listen-port}") val bindPort: Int,
     @Value("\${websockets.allowed-origin}") val allowedOrigin: String?,
     private val applicationContext: ApplicationContext
 ) {

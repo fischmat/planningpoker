@@ -1,0 +1,32 @@
+name: Create release image and deploy
+run-name: Deploy ${{ github.ref_name }}
+on:
+  push:
+    branches:
+      - develop
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v3
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'corretto'
+      - run: cd ${{ github.workspace }}
+      - name: Build and push images
+        env:
+          DOCKER_REGISTRY: "docker.matthias-fisch.de"
+          REPOSITORY: "docker.matthias-fisch.de/poker-server"
+          DOCKER_SECRET: ${{ secrets.DOCKER_PASSWORD }}
+        run: |
+          TAG=$(./gradlew properties -q | grep "^version:" | awk '{print $2}')
+          IMAGE_NAME="$REPOSITORY:$TAG"
+          echo "Image will be available as $IMAGE_NAME."
+          docker build -t "$IMAGE_NAME" .
+          docker login -u github -p "$DOCKER_SECRET" "$DOCKER_REGISTRY"
+          docker push "$IMAGE_NAME"
+          docker tag "$IMAGE_NAME" "$REPOSITORY:latest"
+          docker push "$REPOSITORY:latest"
