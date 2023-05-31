@@ -1,14 +1,20 @@
 package de.matthiasfisch.planningpoker.service
 
+import de.matthiasfisch.planningpoker.util.forbidden
 import io.minio.errors.ErrorResponseException
 import org.springframework.stereotype.Service
 import java.io.InputStream
 
 @Service
 class ThemeService(
-    private val storageService: StorageService
+    private val storageService: StorageService,
+    private val playerService: PlayerService
 ) {
     fun setCardIcon(gameId: String, iconData: InputStream) {
+        val player = playerService.getPlayer()
+        if (!player.gameIds.contains(gameId)) {
+            throw forbidden("Player ${player.id} is not in game $gameId.")
+        }
         storageService.storePngImage(cardIconObjectId(gameId), iconData, 256)
     }
 
