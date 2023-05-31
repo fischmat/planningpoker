@@ -1,6 +1,7 @@
 package de.matthiasfisch.planningpoker.e2e.pages
 
 import org.openqa.selenium.By
+import org.openqa.selenium.Keys
 
 class SetupGame(app: App, config: SeleniumConfig): Page(app, config) {
 
@@ -8,7 +9,7 @@ class SetupGame(app: App, config: SeleniumConfig): Page(app, config) {
         app.driver.findElement(By.id("session-name")).run {
             clear()
             sendKeys(text)
-            sendKeys("\t")
+            sendKeys(Keys.TAB)
         }
         return this
     }
@@ -17,7 +18,7 @@ class SetupGame(app: App, config: SeleniumConfig): Page(app, config) {
         app.driver.findElement(By.id("session-password")).run {
             clear()
             sendKeys(text)
-            sendKeys("\t")
+            sendKeys(Keys.TAB)
         }
         return this
     }
@@ -26,19 +27,12 @@ class SetupGame(app: App, config: SeleniumConfig): Page(app, config) {
         app.driver.findElement(By.id("session-cards")).run {
             clear()
             sendKeys(text)
-            sendKeys("\t")
+            sendKeys(Keys.TAB)
         }
         return this
     }
 
-    fun canSubmit(): Boolean {
-        return app.driver.findElement(By.id("session-submit")).isEnabled
-    }
-
     fun submit() {
         app.driver.findElement(By.id("session-submit")).click()
-        wait().until {
-            it.findElement(By.id("player-name")) != null || it.findElement(By.id("game-title")) != null
-        }
     }
 }

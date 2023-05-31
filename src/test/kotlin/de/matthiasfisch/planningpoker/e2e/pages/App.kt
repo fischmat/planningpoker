@@ -7,4 +7,5 @@ class App(val driver: WebDriver, config: SeleniumConfig) {
     val setupGame = SetupGame(this, config)
     val editPlayer = EditPlayer(this, config)
     val enterPassword = EnterPassword(this, config)
+    val game = GamePage(this, config)
 }
