@@ -6,7 +6,6 @@ import de.matthiasfisch.planningpoker.model.*
 import de.matthiasfisch.planningpoker.service.PasswordHashingService
 import de.matthiasfisch.planningpoker.util.CleanupExtension
 import de.matthiasfisch.planningpoker.util.RestAssuredExtension
-import de.matthiasfisch.planningpoker.util.SocketIOExtension
 import io.kotest.core.extensions.Extension
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.extensions.spring.SpringExtension
@@ -30,7 +29,6 @@ class RoundsIT(
 ): FunSpec() {
     override fun extensions(): List<Extension> = listOf(SpringExtension, RestAssuredExtension(serverPort))
     val cleanup = extension(CleanupExtension())
-    val socketIO = extension(SocketIOExtension())
 
     @Autowired
     private lateinit var gameRepository: GameRepository
@@ -109,7 +107,6 @@ class RoundsIT(
             test("Start round -> 200") {
                 // Arrange
                 val game = createGame("some-game", null, listOf(1, 2, 3), listOf(player))
-                socketIO.joinGame(game.id!!)
 
                 val stub = RoundStub(
                     topic = "Some topic"
