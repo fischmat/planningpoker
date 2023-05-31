@@ -1,17 +1,16 @@
 package de.matthiasfisch.planningpoker.service
 
+import com.sksamuel.scrimage.ImmutableImage
+import com.sksamuel.scrimage.nio.PngWriter
 import io.minio.*
 import mu.KotlinLogging
 import org.apache.commons.compress.utils.IOUtils
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
-import java.awt.image.BufferedImage
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.nio.charset.StandardCharsets
+import java.nio.file.Path
 import javax.crypto.spec.SecretKeySpec
-import javax.imageio.ImageIO
 import kotlin.io.path.*
 
 @Service
@@ -33,13 +32,23 @@ class StorageService(
     private val tempDir = createTempDirectory()
     private val log = KotlinLogging.logger {}
 
-    fun storePngImage(objectName: String, data: InputStream) {
-        val image = ImageIO.read(data)
-        val convertedImage = BufferedImage(image.width, image.height, BufferedImage.TYPE_INT_ARGB)
-        convertedImage.graphics.drawImage(image, 0, 0, null, null)
-        ByteArrayOutputStream().use {
-            ImageIO.write(convertedImage, "png", it)
-            storeObject(objectName, ByteArrayInputStream(it.toByteArray()))
+    fun storePngImage(objectName: String, data: InputStream, maxDimensionPx: Int) {
+        val file = createTempFile(directory = tempDir.toAbsolutePath(), prefix = objectName)
+        try {
+            var image = ImmutableImage.loader()
+                .fromStream(data)
+
+            // Scale to maximum dimension
+            if (image.width > image.height && image.width > maxDimensionPx) {
+                image = image.scaleToWidth(maxDimensionPx)
+            } else if (image.height > image.width && image.height > maxDimensionPx) {
+                image.scaleToHeight(maxDimensionPx)
+            }
+            image.output(PngWriter.MaxCompression, file)
+
+            storeObject(objectName, file)
+        } finally {
+            file.deleteIfExists()
         }
     }
 
@@ -47,21 +56,25 @@ class StorageService(
         val file = createTempFile(directory = tempDir.toAbsolutePath(), prefix = objectName)
         try {
             IOUtils.copy(data, file.outputStream())
-            client.uploadObject(
-                UploadObjectArgs.builder()
-                    .bucket(bucket)
-                    .`object`(objectName)
-                    .let {
-                        if (sse != null) {
-                            it.sse(sse)
-                        } else it
-                    }
-                    .filename(file.absolutePathString())
-                    .build()
-            )
+            storeObject(objectName, file)
         } finally {
             file.deleteIfExists()
         }
+    }
+
+    fun storeObject(objectName: String, file: Path) {
+        client.uploadObject(
+            UploadObjectArgs.builder()
+                .bucket(bucket)
+                .`object`(objectName)
+                .let {
+                    if (sse != null) {
+                        it.sse(sse)
+                    } else it
+                }
+                .filename(file.absolutePathString())
+                .build()
+        )
     }
 
     fun getObject(objectName: String): InputStream {
