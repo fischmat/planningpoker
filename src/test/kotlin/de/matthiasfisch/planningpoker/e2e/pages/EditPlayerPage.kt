@@ -2,9 +2,10 @@ package de.matthiasfisch.planningpoker.e2e.pages
 
 import org.openqa.selenium.By
 import org.openqa.selenium.Keys
+import org.openqa.selenium.WebDriver
 import org.openqa.selenium.support.ui.ExpectedConditions
 
-class EditPlayer(app: App, config: SeleniumConfig): Page(app, config) {
+class EditPlayerPage(driver: WebDriver, config: SeleniumConfig): Page(driver, config) {
 
     fun awaitPagePresent() {
         wait().until {
@@ -12,8 +13,8 @@ class EditPlayer(app: App, config: SeleniumConfig): Page(app, config) {
         }
     }
 
-    fun enterName(text: String): EditPlayer {
-        app.driver.findElement(By.id("player-name")).run {
+    fun enterName(text: String): EditPlayerPage {
+        driver.findElement(By.id("player-name")).run {
             clear()
             sendKeys(text)
             sendKeys(Keys.TAB)
@@ -23,6 +24,6 @@ class EditPlayer(app: App, config: SeleniumConfig): Page(app, config) {
 
     fun submit() {
         wait().until { ExpectedConditions.elementToBeClickable(By.id("submit-player")) }
-        app.driver.findElement(By.id("submit-player")).click()
+        driver.findElement(By.id("submit-player")).click()
     }
 }

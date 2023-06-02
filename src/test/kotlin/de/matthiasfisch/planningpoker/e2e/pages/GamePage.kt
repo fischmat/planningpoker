@@ -1,8 +1,9 @@
 package de.matthiasfisch.planningpoker.e2e.pages
 
 import org.openqa.selenium.By
+import org.openqa.selenium.WebDriver
 
-class GamePage(app: App, config: SeleniumConfig): Page(app, config) {
+class GamePage(driver: WebDriver, config: SeleniumConfig): Page(driver, config) {
 
     fun awaitPagePresent() {
         wait().until {
@@ -11,6 +12,6 @@ class GamePage(app: App, config: SeleniumConfig): Page(app, config) {
     }
 
     fun getWindowTitle(): String? {
-        return app.driver.title
+        return driver.title
     }
 }
