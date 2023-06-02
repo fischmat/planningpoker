@@ -8,14 +8,14 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
 
 @Configuration
 @EnableWebMvc
-@Profile("dev")
+@Profile("dev", "e2e")
 class CorsConfiguration: WebMvcConfigurer {
 
     override fun addCorsMappings(registry: CorsRegistry) {
         registry.addMapping("/**")
             .exposedHeaders("*")
             .allowedMethods("*")
-            .allowedOrigins("http://localhost:5173")
+            .allowedOriginPatterns("http://localhost:[*]")
             .allowCredentials(true)
     }
 }

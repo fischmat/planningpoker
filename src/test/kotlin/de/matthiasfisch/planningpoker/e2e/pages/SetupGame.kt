@@ -35,4 +35,15 @@ class SetupGame(app: App, config: SeleniumConfig): Page(app, config) {
     fun submit() {
         app.driver.findElement(By.id("session-submit")).click()
     }
+
+    fun canSubmit(): Boolean {
+        return app.driver.findElement(By.id("session-submit")).isEnabled
+    }
+
+    fun awaitPagePresent(): SetupGame {
+        wait().until {
+            it.findElement(By.id("session-name")) != null
+        }
+        return this
+    }
 }

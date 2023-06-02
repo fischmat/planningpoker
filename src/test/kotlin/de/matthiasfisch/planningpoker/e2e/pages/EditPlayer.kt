@@ -6,10 +6,6 @@ import org.openqa.selenium.support.ui.ExpectedConditions
 
 class EditPlayer(app: App, config: SeleniumConfig): Page(app, config) {
 
-    fun isPresent(): Boolean {
-        return app.driver.findElement(By.id("player-name")) != null
-    }
-
     fun awaitPagePresent() {
         wait().until {
             it.findElement(By.id("player-name")) != null || it.findElement(By.id("game-title")) != null
@@ -23,10 +19,6 @@ class EditPlayer(app: App, config: SeleniumConfig): Page(app, config) {
             sendKeys(Keys.TAB)
         }
         return this
-    }
-
-    fun awaitSubmitEnabled() {
-        wait().until(ExpectedConditions.elementToBeClickable(By.id("submit-player")))
     }
 
     fun submit() {
