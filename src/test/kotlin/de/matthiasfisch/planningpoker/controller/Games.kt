@@ -147,6 +147,40 @@ object Games {
             .extract()
             .`as`(Round::class.java)
 
+    fun submitVoteResponse(gameId: String, roundId: String, card: Card, sessionId: String?) =
+        RestAssured.given()
+            .addSessionId(sessionId)
+            .header("Content-Type", "application/json")
+            .body(card, ObjectMapperType.JACKSON_2)
+            .`when`()
+            .request(Method.POST, "/v1/games/{gameId}/rounds/{roundId}/votes", gameId, roundId)
+
+    fun submitVote(gameId: String, roundId: String, card: Card, sessionId: String?) =
+        submitVoteResponse(gameId, roundId, card, sessionId)
+            .then()
+            .statusCode(200)
+            .extract()
+            .`as`(Vote::class.java)
+
+    fun revokeVoteResponse(gameId: String, roundId: String, sessionId: String?) =
+        RestAssured.given()
+            .addSessionId(sessionId)
+            .`when`()
+            .request(Method.DELETE, "/v1/games/{gameId}/rounds/{roundId}/votes/mine", gameId, roundId)
+
+    fun getVotesResponse(gameId: String, roundId: String, sessionId: String?) =
+        RestAssured.given()
+            .addSessionId(sessionId)
+            .`when`()
+            .request(Method.GET, "/v1/games/{gameId}/rounds/{roundId}/votes", gameId, roundId)
+
+    fun getVotes(gameId: String, roundId: String, sessionId: String?) =
+        getVotesResponse(gameId, roundId, sessionId)
+            .then()
+            .statusCode(200)
+            .extract()
+            .`as`(List::class.java) as List<Map<String, Any>>
+
     private fun RequestSpecification.addSessionId(sessionId: String?) =
         if (sessionId != null) {
             cookie(Api.sessionCookieName, sessionId)
