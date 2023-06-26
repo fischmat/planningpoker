@@ -12,7 +12,9 @@ import java.time.Duration
 
 
 @Configuration
-@EnableMongoHttpSession
+@EnableMongoHttpSession(
+    maxInactiveIntervalInSeconds = 12 * 3600 // 12h
+)
 class ApplicationConfig {
 
     @Bean
