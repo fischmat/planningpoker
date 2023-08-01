@@ -22,14 +22,14 @@ class PasswordHashingService(
      * @param plaintext The plaintext to encode.
      * @return Returns the PBKDF2 password hash.
      */
-    fun encodePlaintext(plaintext: String) = encodeItermediate(createIntermediate(plaintext))
+    fun encodePlaintext(plaintext: String): String = encodeIntermediate(createIntermediate(plaintext))
 
     /**
      * Encodes a SHA-512 encoded password to a PBKDF2 password hash.
      * @param intermediate The SHA-512 hashed password.
      * @return Returns the PBKDF2 password hash.
      */
-    fun encodeItermediate(intermediate: String) = encoder.encode(intermediate)
+    fun encodeIntermediate(intermediate: String): String = encoder.encode(intermediate)
 
     fun createIntermediate(plaintext: String): String = DigestUtils.sha512Hex(plaintext)
 
