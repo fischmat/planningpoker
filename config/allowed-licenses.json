@@ -22,6 +22,12 @@
       "moduleLicense": "Bouncy Castle Licence"
     },
     {
+      "moduleLicense": "The 2-Clause BSD License"
+    },
+    {
+      "moduleLicense": "MIT-0"
+    },
+    {
       "moduleLicense": null,
       "moduleVersion": "3.0.0",
       "moduleName": "com.squareup.okio:okio"

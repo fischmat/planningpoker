@@ -1,6 +1,6 @@
 package de.matthiasfisch.planningpoker.service
 
-import de.matthiasfisch.planningpoker.model.AvatarProps
+import de.matthiasfisch.planningpoker.model.Avatar
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager
 import org.http4k.client.ApacheClient
@@ -22,7 +22,7 @@ class AvatarService(
         )
     }
 
-    fun getAvatar(avatar: AvatarProps): ByteArray {
+    fun getAvatar(avatar: Avatar): ByteArray {
         return getAvatar(
             Request(Method.GET, baseUrl).withAvatarQueryParams(avatar)
         )
@@ -40,7 +40,7 @@ class AvatarService(
         }
     }
 
-    private fun Request.withAvatarQueryParams(avatar: AvatarProps): Request {
+    private fun Request.withAvatarQueryParams(avatar: Avatar): Request {
         var request = this
 
         // background

@@ -1,0 +1,109 @@
+
+scalar Timestamp
+
+interface Creatable {
+    createdAt: Timestamp!
+}
+
+interface Updatable {
+    createdAt: Timestamp!
+    updatedAt: Timestamp!
+}
+
+input AvatarInput {
+    backgroundColor: String!
+    earrings: Int
+    eyebrows: Int!
+    eyes: Int!
+    features: [String!]!
+    glasses: Int
+    hair: Int
+    longHair: Boolean!
+    hairColor: String!
+    mouth: Int!
+    skinColor: String!
+}
+
+type Avatar {
+    backgroundColor: String!
+    earrings: Int
+    eyebrows: Int!
+    eyes: Int!
+    features: [String!]!
+    glasses: Int
+    hair: Int
+    longHair: Boolean!
+    hairColor: String!
+    mouth: Int!
+    skinColor: String!
+}
+
+type Player implements Updatable {
+    id: ID!
+    name: String!
+    createdAt: Timestamp!
+    updatedAt: Timestamp!
+    avatar: Avatar
+    games: [Game!]!
+}
+
+type Card {
+    value: Int!
+}
+
+type Vote implements Creatable {
+    player: Player!
+    round: Round!
+    createdAt: Timestamp!
+    card: Card!
+}
+
+type RoundStatistics {
+    votes: [Vote!]!
+    minVoteValue: Int
+    maxVoteValue: Int
+    minVotes: [Vote!]!
+    maxVotes: [Vote!]!
+    suggestedCard: Card
+    averageVote: Float
+    variance: Float
+}
+
+type Round implements Updatable {
+    id: ID!
+    game: Game!
+    topic: String
+    createdAt: Timestamp!
+    updatedAt: Timestamp!
+    endedAt: Timestamp
+    endedBy: Player
+    statistics: RoundStatistics
+}
+
+type Game implements Updatable {
+    id: ID!
+    name: String!
+    createdAt: Timestamp!
+    updatedAt: Timestamp!
+    hasPassword: Boolean!
+    playableCards: [Card!]!
+    players: [Player!]!
+    rounds: [Round!]!
+    currentRound: Round
+}
+
+type Query {
+    me: Player
+    player(id: ID!): Player!
+    game(id: ID!): Game!
+}
+
+type Mutation {
+    me(name: String, avatar: AvatarInput): Player
+    game(name: String!, password: String, playableCards: [Int!]!): Game
+    newRound(gameId: ID!, topic: String): Game!
+    endRound(id: ID!): Game!
+    joinGame(id: ID!): Game!
+    newVote(roundId: ID!, card: Int!): Game!
+    revokeVote(roundId: ID!): Game!
+}

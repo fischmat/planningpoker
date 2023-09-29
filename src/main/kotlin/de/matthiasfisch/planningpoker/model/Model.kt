@@ -1,62 +1,51 @@
 package de.matthiasfisch.planningpoker.model
 
-import com.fasterxml.jackson.annotation.JsonIgnore
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties
-import com.fasterxml.jackson.annotation.JsonProperty
-import org.springframework.data.annotation.Id
-import org.springframework.data.mongodb.core.mapping.Document
-import org.springframework.data.mongodb.repository.MongoRepository
-import org.springframework.data.mongodb.repository.Query
 import java.time.Instant
+import java.util.*
 
-@Document("players")
-data class Player (
-    @Id val id: String? = null,
-    val name: String,
-    val gameIds: MutableList<String>,
-    val avatar: AvatarProps? = null
+interface Creatable {
+    val createdAt: Instant
+}
+
+interface Updatable {
+    val createdAt: Instant
+    val updatedAt: Instant
+}
+
+data class Avatar(
+    val backgroundColor: String,
+    val earrings: Int?,
+    val eyebrows: Int,
+    val eyes: Int,
+    val features: List<String>,
+    val glasses: Int?,
+    val hair: Int?,
+    val longHair: Boolean,
+    val hairColor: String,
+    val mouth: Int,
+    val skinColor: String
 )
 
-@Document("games")
-@JsonIgnoreProperties(ignoreUnknown = true)
-data class Game(
-    @Id val id: String? = null,
+data class Player(
+    val id: UUID,
     val name: String,
-    @JsonIgnore val passwordHash: String?,
-    val playableCards: List<Card>
-) {
-    init {
-        require(name.isNotEmpty()) { "Name of game must not be blank." }
-        require(passwordHash == null || passwordHash.isNotEmpty()) { "Password must be not blank if specified." }
-        require(playableCards.isNotEmpty()) { "No playable cards are set for the game." }
-        val duplicateCards = playableCards.filter { c ->
-            playableCards.count { it.value == c.value } > 1
-        }.distinct().sortedBy { it.value }
-        require(duplicateCards.isEmpty()) {
-            "Playable cards are duplicated: ${duplicateCards.map { it.value }.joinToString(", ")}"
-        }
-    }
-
-    @JsonProperty("hasPassword") fun hasPassword() = passwordHash != null
-}
+    override val createdAt: Instant,
+    override val updatedAt: Instant,
+    val avatar: Avatar?
+): Updatable
 
 data class Card(
     val value: Int
 )
 
-@JsonIgnoreProperties(ignoreUnknown = true)
-data class Round(
-    @Id val id: String? = null,
-    val gameId: String,
-    val topic: String,
-    val started: Instant = Instant.now(),
-    val ended: Instant? = null,
-    val result: RoundResults? = null
-) {
-    fun isFinished() = ended != null
-}
+data class Vote(
+    val playerId: UUID,
+    val roundId: UUID,
+    override val createdAt: Instant,
+    val card: Card
+): Creatable
 
-data class RoundResults(
+data class RoundStatistics(
     val votes: List<Vote>,
     val minVoteValue: Int?,
     val maxVoteValue: Int?,
@@ -67,28 +56,21 @@ data class RoundResults(
     val variance: Double?
 )
 
-data class Vote(
-    @Id val id: String? = null,
-    val gameId: String,
-    val roundId: String,
-    val player: Player,
-    val card: Card
-)
+data class Round(
+    val id: UUID,
+    val gameId: UUID,
+    val topic: String?,
+    override val createdAt: Instant,
+    override val updatedAt: Instant,
+    val endedAt: Instant?,
+    val endedByPlayerId: UUID?
+): Updatable
 
-// Repositories
-
-interface GameRepository: MongoRepository<Game, String>
-
-interface PlayerRepository: MongoRepository<Player, String> {
-    @Query(value = "{ 'gameIds': { \$all: [?0] } }")
-    fun findByGameId(gameId: String): List<Player>
-}
-
-interface RoundRepository: MongoRepository<Round, String> {
-    fun findByGameId(gameId: String): List<Round>
-    fun findByGameIdAndEnded(gameId: String, ended: Instant?): List<Round>
-}
-
-interface VoteRepository: MongoRepository<Vote, String> {
-    fun findByRoundId(roundId: String): List<Vote>
-}
+data class Game(
+    val id: UUID,
+    val name: String,
+    override val createdAt: Instant,
+    override val updatedAt: Instant,
+    val hasPassword: Boolean,
+    val playableCards: List<Card>
+): Updatable
