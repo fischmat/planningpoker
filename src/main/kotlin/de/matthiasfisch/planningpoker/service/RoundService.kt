@@ -134,7 +134,8 @@ class RoundService(
         val variance = average?.let { avg ->
             sqrt(votes.map { (it.card.value - avg).pow(2.0) }.average())
         }?.takeIf { !it.isNaN() }
-        val suggestedCard = if (average != null) {
+        // Conservative card is the next card over the average
+        val suggestedCardConservative = if (average != null) {
             gameService.getGame(round.gameId)
                 .playableCards
                 .filter { it.value >= average }
@@ -142,6 +143,9 @@ class RoundService(
         } else {
             null
         }
+        // Majority card is the one with the most votes
+        val cardCounts = votes.map { it.card }.associateWith { c -> votes.count { it.card.value == c.value } }
+        val suggestedCardMajority = cardCounts.maxByOrNull { it.value }?.key
 
         return RoundResults(
             votes = votes,
@@ -151,7 +155,8 @@ class RoundService(
             maxVotes = votes.filter { it.card.value == maxVote },
             averageVote = average,
             variance = variance,
-            suggestedCard = suggestedCard
+            suggestedCardConservative = suggestedCardConservative,
+            suggestedCardMajority = suggestedCardMajority
         )
     }
 

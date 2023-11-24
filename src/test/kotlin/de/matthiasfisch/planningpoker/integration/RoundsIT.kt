@@ -286,7 +286,8 @@ class RoundsIT(
                     variance = null,
                     minVoteValue = null,
                     maxVoteValue = null,
-                    suggestedCard = null
+                    suggestedCardConservative = null,
+                    suggestedCardMajority = null
                 )
 
                 // Act
@@ -355,7 +356,7 @@ class RoundsIT(
                 result.maxVoteValue shouldBe 3
                 result.averageVote shouldBe 2.25
                 result.variance shouldBe 0.82915619758885
-                result.suggestedCard shouldBe Card(3)
+                result.suggestedCardConservative shouldBe Card(3)
             }
 
             test("End round of non-existing game -> 404") {

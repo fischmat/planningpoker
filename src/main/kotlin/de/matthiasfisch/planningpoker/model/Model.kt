@@ -62,7 +62,8 @@ data class RoundResults(
     val maxVoteValue: Int?,
     val minVotes: List<Vote>,
     val maxVotes: List<Vote>,
-    val suggestedCard: Card?,
+    val suggestedCardConservative: Card?,
+    val suggestedCardMajority: Card?,
     val averageVote: Double?,
     val variance: Double?
 )
