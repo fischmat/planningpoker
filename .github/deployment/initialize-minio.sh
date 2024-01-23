@@ -11,8 +11,8 @@ mc admin policy attach server readwrite --user poker
 
 echo "Creating service account"
 OUTPUT=$(mc admin user svcacct add server poker)
-ACCESS_KEY=$(echo "$OUTPUT" | head -n 1 | cut -d: -f2 | cut -d' ' -f2)
-SECRET_KEY=$(echo "$OUTPUT" | tail -n 1 | cut -d: -f2 | cut -d' ' -f2)
+ACCESS_KEY=$(echo "$OUTPUT" | grep -i "Access Key" | cut -d: -f2 | cut -d' ' -f2)
+SECRET_KEY=$(echo "$OUTPUT" | grep -i "Secret Key" | cut -d: -f2 | cut -d' ' -f2)
 
 echo "storage.s3.accessKey: $ACCESS_KEY" > /out/application-minio-ci.yml
 echo "storage.s3.secretKey: $SECRET_KEY" >> /out/application-minio-ci.yml
