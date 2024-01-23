@@ -1,5 +1,6 @@
 package de.matthiasfisch.planningpoker.service
 
+import com.corundumstudio.socketio.SocketIOClient
 import de.matthiasfisch.planningpoker.model.*
 import de.matthiasfisch.planningpoker.util.forbidden
 import de.matthiasfisch.planningpoker.util.notFoundError
@@ -62,30 +63,11 @@ class GameEventService(
 
     init {
         eventService.addListener(EnterGameCommand.EVENT_NAME, EnterGameCommand::class.java) { client, event, _ ->
-            val game = gameRepository.findById(event.gameId)
-            if (game.isEmpty) {
-                LOGGER.debug { "Client (${client.remoteAddress}) tried to join non-existing game '${event.gameId}'." }
-                client.sendEvent(ErrorEvent.EVENT_NAME, ErrorEvent("Game with ID '${event.gameId}' does not exist."))
-                return@addListener
-            }
-
-            val expectedPasswordHash = game.get().passwordHash
-            if (expectedPasswordHash != null
-                && (event.passwordHash == null || !passwordHashingService.intermediateMatches(event.passwordHash, expectedPasswordHash))
-            ) {
-                LOGGER.info { "Rejected client (${client.remoteAddress}) from joining game '${event.gameId}': Wrong password" }
-                client.sendEvent(ErrorEvent.EVENT_NAME, ErrorEvent("Provided password is wrong."))
-                return@addListener
-            }
-
-            val room = gameRoom(event.gameId)
-            client.joinRoom(room)
-            client.sendEvent(GameEnteredEvent.EVENT_NAME, GameEnteredEvent(event.gameId, room))
-            LOGGER.debug { "Client (${client.remoteAddress}) subscribed for events from game '${event.gameId}'." }
+            handleGameJoined(client, event)
         }
 
         eventService.addListener(LeaveGameCommand.EVENT_NAME, LeaveGameCommand::class.java) { client, event, _ ->
-            client.leaveRoom(gameRoom(event.gameId))
+            client.leaveRoom(gameRoomId(event.gameId))
         }
     }
 
@@ -107,11 +89,34 @@ class GameEventService(
     fun notifyPlayerVoteRevoked(gameId: String, round: Round, vote: Vote) =
         broadcast(gameId, VoteRevokedEvent.EVENT_NAME, VoteRevokedEvent(gameId, round, vote))
 
+    private fun handleGameJoined(client: SocketIOClient, event: EnterGameCommand) {
+        val game = gameRepository.findById(event.gameId)
+        if (game.isEmpty) {
+            LOGGER.debug { "Client (${client.remoteAddress}) tried to join non-existing game '${event.gameId}'." }
+            client.sendEvent(ErrorEvent.EVENT_NAME, ErrorEvent("Game with ID '${event.gameId}' does not exist."))
+            return
+        }
+
+        val expectedPasswordHash = game.get().passwordHash
+        if (expectedPasswordHash != null
+            && (event.passwordHash == null || !passwordHashingService.intermediateMatches(event.passwordHash, expectedPasswordHash))
+        ) {
+            LOGGER.info { "Rejected client (${client.remoteAddress}) from joining game '${event.gameId}': Wrong password" }
+            client.sendEvent(ErrorEvent.EVENT_NAME, ErrorEvent("Provided password is wrong."))
+            return
+        }
+
+        val room = gameRoomId(event.gameId)
+        client.joinRoom(room)
+        client.sendEvent(GameEnteredEvent.EVENT_NAME, GameEnteredEvent(event.gameId, room))
+        LOGGER.debug { "Client (${client.remoteAddress}) subscribed for events from game '${event.gameId}'." }
+    }
+
     private fun broadcast(gameId: String, eventName: String, event: Event) {
-        val room = gameRoom(gameId)
+        val room = gameRoomId(gameId)
         LOGGER.debug { "Broadcasting event '$eventName' to room $room: $event" }
         eventService.broadcastToRoom(room, eventName, event)
     }
 
-    private fun gameRoom(gameId: String) = roomPrefix + gameId
+    private fun gameRoomId(gameId: String) = roomPrefix + gameId
 }
