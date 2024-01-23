@@ -47,6 +47,8 @@ class StorageService(
             image.output(PngWriter.MaxCompression, file)
 
             storeObject(objectName, file)
+        } catch (e: Throwable) {
+            log.error(e) { "Failed to convert and store PNG image (object name: $objectName)." }
         } finally {
             file.deleteIfExists()
         }
@@ -57,6 +59,8 @@ class StorageService(
         try {
             IOUtils.copy(data, file.outputStream())
             storeObject(objectName, file)
+        } catch (e: Throwable) {
+            log.error(e) { "Failed to store object (object name: $objectName)." }
         } finally {
             file.deleteIfExists()
         }
