@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service
 
 @Service
 class AvatarService(
-    @Value("\${avatars.dicebear.uri}") private val baseUrl: String
+    @Value("\${images.avatars.dicebear.uri}") private val baseUrl: String
 ) {
     private val client = createClient()
 

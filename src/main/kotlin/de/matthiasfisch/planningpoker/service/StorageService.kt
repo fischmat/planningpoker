@@ -3,15 +3,17 @@ package de.matthiasfisch.planningpoker.service
 import com.sksamuel.scrimage.ImmutableImage
 import com.sksamuel.scrimage.nio.PngWriter
 import io.minio.*
+import io.minio.errors.ErrorResponseException
 import mu.KotlinLogging
-import org.apache.commons.compress.utils.IOUtils
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import java.io.InputStream
 import java.nio.charset.StandardCharsets
-import java.nio.file.Path
 import javax.crypto.spec.SecretKeySpec
-import kotlin.io.path.*
+import kotlin.io.path.absolutePathString
+import kotlin.io.path.createTempDirectory
+import kotlin.io.path.createTempFile
+import kotlin.io.path.deleteIfExists
 
 @Service
 class StorageService(
@@ -21,6 +23,8 @@ class StorageService(
     @Value("\${storage.s3.encryptionKey}") encryptionKey: String?,
     @Value("\${storage.s3.bucket}") private val bucket: String
 ) {
+    private val log = KotlinLogging.logger {}
+
     private val client by lazy { createS3Client(endpoint, accessKey, secretKey, bucket) }
     private val sse = encryptionKey
         ?.takeIf { it.isNotBlank() }
@@ -29,8 +33,9 @@ class StorageService(
             check(keyBytes.size * 8 >= 256) { "At least a 256 bit key is required for SSE, but provided key has only ${keyBytes.size * 8} bits." }
             ServerSideEncryptionCustomerKey(SecretKeySpec(keyBytes, "AES"))
         }
-    private val tempDir = createTempDirectory()
-    private val log = KotlinLogging.logger {}
+    private val tempDir = createTempDirectory().also {
+        log.info { "Storing temporary files in $it before uploading to S3." }
+    }
 
     fun storePngImage(objectName: String, data: InputStream, maxDimensionPx: Int) {
         val file = createTempFile(directory = tempDir.toAbsolutePath(), prefix = objectName)
@@ -46,7 +51,18 @@ class StorageService(
             }
             image.output(PngWriter.MaxCompression, file)
 
-            storeObject(objectName, file)
+            client.uploadObject(
+                UploadObjectArgs.builder()
+                    .bucket(bucket)
+                    .`object`(objectName)
+                    .let {
+                        if (sse != null) {
+                            it.sse(sse)
+                        } else it
+                    }
+                    .filename(file.absolutePathString())
+                    .build()
+            )
         } catch (e: Throwable) {
             log.error(e) { "Failed to convert and store PNG image (object name: $objectName)." }
         } finally {
@@ -54,41 +70,22 @@ class StorageService(
         }
     }
 
-    fun storeObject(objectName: String, data: InputStream) {
-        val file = createTempFile(directory = tempDir.toAbsolutePath(), prefix = objectName)
-        try {
-            IOUtils.copy(data, file.outputStream())
-            storeObject(objectName, file)
-        } catch (e: Throwable) {
-            log.error(e) { "Failed to store object (object name: $objectName)." }
-        } finally {
-            file.deleteIfExists()
+    fun getObject(objectName: String): InputStream? {
+        return try {
+            client.getObject(
+                GetObjectArgs.builder()
+                    .bucket(bucket)
+                    .`object`(objectName)
+                    .let { if (sse != null) it.ssec(sse) else it }
+                    .build()
+            )
+        } catch (e: ErrorResponseException) {
+            if (e.errorResponse().code() == "NoSuchKey") {
+                null
+            } else {
+                throw e
+            }
         }
-    }
-
-    fun storeObject(objectName: String, file: Path) {
-        client.uploadObject(
-            UploadObjectArgs.builder()
-                .bucket(bucket)
-                .`object`(objectName)
-                .let {
-                    if (sse != null) {
-                        it.sse(sse)
-                    } else it
-                }
-                .filename(file.absolutePathString())
-                .build()
-        )
-    }
-
-    fun getObject(objectName: String): InputStream {
-        return client.getObject(
-            GetObjectArgs.builder()
-                .bucket(bucket)
-                .`object`(objectName)
-                .let { if (sse != null) it.ssec(sse) else it }
-                .build()
-        )
     }
 
     private fun createS3Client(endpoint: String, accessKey: String, secretKey: String, bucket: String): MinioClient {

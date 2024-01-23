@@ -1,15 +1,22 @@
 package de.matthiasfisch.planningpoker.service
 
 import de.matthiasfisch.planningpoker.util.forbidden
-import io.minio.errors.ErrorResponseException
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
+import java.io.File
 import java.io.InputStream
+import java.nio.file.Path
 
 @Service
 class ThemeService(
     private val storageService: StorageService,
-    private val playerService: PlayerService
+    private val playerService: PlayerService,
+    @Value("\${images.card-icon.default-icon-file}") defaultCardIconFilePath: String?
 ) {
+    private val defaultCardIconFile: File? = defaultCardIconFilePath
+        ?.takeIf { it.isNotBlank() }
+        ?.let { loadDefaultIconFromPath(it) }
+
     fun setCardIcon(gameId: String, iconData: InputStream) {
         val player = playerService.getPlayer()
         if (!player.gameIds.contains(gameId)) {
@@ -18,23 +25,20 @@ class ThemeService(
         storageService.storePngImage(cardIconObjectId(gameId), iconData, 256)
     }
 
-    fun getCardIcon(gameId: String): InputStream? {
-        return try {
-            storageService.getObject(cardIconObjectId(gameId))
-        } catch (e: ErrorResponseException) {
-            if (e.errorResponse().code() == "NoSuchKey") {
-                defaultCardIcon()
-            } else {
-                throw e
-            }
-        }
-    }
+    fun getCardIcon(gameId: String): InputStream? =
+        storageService.getObject(cardIconObjectId(gameId))?: defaultCardIcon()
 
-    private fun defaultCardIcon(): InputStream {
-        // TODO Make default image configurable
-        return javaClass.getResourceAsStream("/static/empty.png")
-            ?: throw IllegalStateException("Resource /static/empty.png not found!")
-    }
+    private fun defaultCardIcon(): InputStream =
+        defaultCardIconFile?.inputStream() ?: run {
+            javaClass.getResourceAsStream("/static/empty.png")
+                ?: throw IllegalStateException("Resource /static/empty.png not found!")
+        }
 
     private fun cardIconObjectId(gameId: String) = "card-icon-$gameId"
+
+    private fun loadDefaultIconFromPath(path: String) =
+        Path.of(path).toFile().also {
+            require(it.isFile) { "Default card icon file $path is not a file." }
+            require(it.canRead()) { "Default card icon file $path is not readable." }
+        }
 }

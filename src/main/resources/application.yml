@@ -35,6 +35,9 @@ storage:
     bucket: poker
     encryptionKey:
 
-avatars:
-  dicebear:
-    uri: http://localhost:3000/6.x/adventurer/svg
+images:
+  card-icon:
+    default-icon-file: ""
+  avatars:
+    dicebear:
+      uri: http://localhost:3000/6.x/adventurer/svg
