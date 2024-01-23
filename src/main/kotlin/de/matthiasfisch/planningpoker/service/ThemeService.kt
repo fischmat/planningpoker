@@ -22,7 +22,7 @@ class ThemeService(
         if (!player.gameIds.contains(gameId)) {
             throw forbidden("Player ${player.id} is not in game $gameId.")
         }
-        storageService.storePngImage(cardIconObjectId(gameId), iconData, 256)
+        storageService.storePngImage(cardIconObjectId(gameId), iconData, 80)
     }
 
     fun getCardIcon(gameId: String): InputStream? =
