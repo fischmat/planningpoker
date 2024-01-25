@@ -38,6 +38,7 @@ storage:
 images:
   card-icon:
     default-icon-file: ""
+    max-dimension-px: 80
   avatars:
     dicebear:
       uri: http://localhost:3000/6.x/adventurer/svg
