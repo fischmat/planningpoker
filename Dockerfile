@@ -1,10 +1,10 @@
-FROM amazoncorretto:17.0.8-al2023-headless@sha256:03e96648c6439d6e91a65c919d241645cbfea0c677bc716a1dcb628a90a7b745 AS build
+FROM amazoncorretto:17.0.10-al2023-headless@sha256:2848d9855d52f7b169bd37f568298ef1c9a04927e749937137c5497735bb2ce2 AS build
 WORKDIR /build
 COPY . .
 RUN yum install findutils -y
 RUN scripts/docker/docker-build.sh
 
-FROM amazoncorretto:17.0.8-al2023-headless@sha256:03e96648c6439d6e91a65c919d241645cbfea0c677bc716a1dcb628a90a7b745
+FROM amazoncorretto:17.0.10-al2023-headles@sha256:2848d9855d52f7b169bd37f568298ef1c9a04927e749937137c5497735bb2ce2
 MAINTAINER github@matthias-fisch.de
 
 RUN mkdir /app
