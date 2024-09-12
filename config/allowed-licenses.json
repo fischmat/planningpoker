@@ -28,7 +28,7 @@
     },
     {
       "moduleLicense": null,
-      "moduleVersion": "1.9.22",
+      "moduleVersion": "1.9.25",
       "moduleName": "org.jetbrains.kotlin:kotlin-stdlib-common"
     }
   ]
